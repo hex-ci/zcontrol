@@ -47,7 +47,7 @@
 
 ## 快速开始
 
-要求：Node.js ≥ 22、pnpm ≥ 10（本项目用 pnpm 12，见 `packageManager` 字段）。
+要求：Node.js ≥ 24（用到内置 `node:sqlite` 与原生 TypeScript 支持）、pnpm ≥ 10（本项目用 pnpm 12，见 `packageManager` 字段）。
 
 ```bash
 pnpm install
