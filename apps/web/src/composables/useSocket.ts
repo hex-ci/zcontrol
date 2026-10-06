@@ -22,11 +22,14 @@ function dispatch(ev: WsEvent) {
       app.setStatus(ev.data.status);
       app.settings = ev.data.settings;
       device.applyDevices(ev.data.devices);
+      app.setScanning(ev.data.scan.active);
+      app.setScanDevices(ev.data.scan.devices);
       break;
     }
     case 'status': {
       const prev = app.status?.mqtt.connected;
       app.setStatus(ev.data);
+      app.setScanning(ev.data.scan.active);
       if (prev !== ev.data.mqtt.connected) {
         if (ev.data.mqtt.connected) {
           for (const d of device.devices) log.push(d.mac, 'sys', '本工具已连接mqtt服务器');
@@ -40,6 +43,11 @@ function dispatch(ev: WsEvent) {
     case 'devices': {
       device.applyDevices(ev.data.devices);
       if (app.scanning) void app.refreshScan();
+      break;
+    }
+    case 'scan': {
+      // 扫描结果实时推送：点「开始扫描」后无需刷新即可看到设备
+      app.setScanDevices(ev.data.devices);
       break;
     }
     case 'data': {

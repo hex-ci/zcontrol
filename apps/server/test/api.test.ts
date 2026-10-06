@@ -174,6 +174,37 @@ describe('后端接口（关键行为）', () => {
     expect(stop.json().active).toBe(false);
   });
 
+  it('扫描发现的设备通过 WS 实时推送（此前没有推送，界面必须刷新才看得到）', async () => {
+    // 假连接：记录 hub 广播出去的每一帧
+    const frames: { type: string; data: unknown }[] = [];
+    const fakeWs = {
+      readyState: 1,
+      send: (text: string) => frames.push(JSON.parse(text)),
+      close: () => {},
+      on: () => {},
+    };
+    const sockets = (built.hub as unknown as { sockets: Set<typeof fakeWs> }).sockets;
+    sockets.add(fakeWs);
+    try {
+      await post('/api/discovery/scan', { action: 'start' });
+      frames.length = 0;
+
+      built.ctx.dispatcher.handleUdp(
+        '192.168.1.60',
+        10182,
+        JSON.stringify({ name: 'zM1_1234', mac: MAC2, type: 4 }),
+      );
+
+      const scanFrame = frames.find((f) => f.type === 'scan');
+      expect(scanFrame).toBeDefined();
+      const devices = (scanFrame?.data as { devices: { mac: string }[] }).devices;
+      expect(devices.map((d) => d.mac)).toContain(MAC2);
+    } finally {
+      sockets.delete(fakeWs);
+      await post('/api/discovery/scan', { action: 'stop' });
+    }
+  });
+
   it('导入导出：非法条目跳过并计数', async () => {
     const exported = (await get('/api/devices/export')).json();
     expect(exported.device).toHaveLength(2);

@@ -52,6 +52,12 @@ export interface AppStatus {
   localIps: string[];
 }
 
+/** 局域网扫描状态：是否在扫描 + 已发现的设备 */
+export interface ScanState {
+  active: boolean;
+  devices: DeviceDTO[];
+}
+
 export interface AppSettings {
   mqtt_uri: string;
   mqtt_user: string;
@@ -87,9 +93,13 @@ export interface ImportResult {
 }
 
 export type WsEvent =
-  | { type: 'hello'; data: { status: AppStatus; devices: DeviceDTO[]; settings: AppSettings } }
+  | {
+      type: 'hello';
+      data: { status: AppStatus; devices: DeviceDTO[]; settings: AppSettings; scan: ScanState };
+    }
   | { type: 'status'; data: AppStatus }
   | { type: 'devices'; data: { devices: DeviceDTO[] } }
+  | { type: 'scan'; data: { devices: DeviceDTO[] } }
   | {
       type: 'data';
       data: { mac: string; source: 'mqtt' | 'udp'; topic: string | null; payload: unknown; ts: number };
@@ -148,9 +158,9 @@ export const api = {
   syncMqtt: (mac: string) =>
     req<{ sent: { channel: 'udp'; payload: string } }>(`/settings/mqtt/sync/${mac}`, { method: 'POST' }),
 
-  scanState: () => req<{ active: boolean; devices: DeviceDTO[] }>('/discovery/scan'),
+  scanState: () => req<ScanState>('/discovery/scan'),
   scan: (action: 'start' | 'stop') =>
-    req<{ active: boolean; devices: DeviceDTO[] }>('/discovery/scan', { method: 'POST', ...json({ action }) }),
+    req<ScanState>('/discovery/scan', { method: 'POST', ...json({ action }) }),
 
   exportDevices: () => req<ExportPayload>('/devices/export'),
   importDevices: (device: { name: string; mac: string; type: number }[]) =>

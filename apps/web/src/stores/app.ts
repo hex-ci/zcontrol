@@ -57,6 +57,10 @@ export const useAppStore = defineStore('app', () => {
     scanDevices.value = list;
   }
 
+  function setScanning(v: boolean) {
+    scanning.value = v;
+  }
+
   return {
     status,
     settings,
@@ -71,5 +75,6 @@ export const useAppStore = defineStore('app', () => {
     stopScan,
     syncMqtt,
     setScanDevices,
+    setScanning,
   };
 });

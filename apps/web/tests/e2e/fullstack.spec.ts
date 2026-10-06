@@ -74,6 +74,12 @@ test.describe('全栈联调（真后端 + 本机 broker + 假设备）', () => {
     });
     // 主动查一次，让假设备立刻回一帧完整数据（不用等它的上报周期）
     await api(`/devices/${FAKE_MAC}/cmd`, { method: 'POST', body: JSON.stringify({ cmd: { brightness: null } }) });
+    // 等数据真正到手再开跑：固定 sleep 在冷启动（刚重启后端）时不够，会让第一个用例空等到超时
+    for (let i = 0; i < 40; i++) {
+      const st = (await api(`/devices/${FAKE_MAC}/state`)).data as { state?: { PM25?: number } };
+      if (typeof st?.state?.PM25 === 'number') break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
   });
 
   test.afterAll(async () => {
@@ -149,5 +155,43 @@ test.describe('全栈联调（真后端 + 本机 broker + 假设备）', () => {
     const payload = (res.data as { sent: { payload: string } }).sent.payload;
     expect(JSON.parse(payload).setting.mqtt_uri).toBe('127.0.0.1');
     expect(JSON.parse(payload).setting.mqtt_port).toBe(1883);
+  });
+
+  test('局域网扫描：点「开始扫描」后设备实时出现在添加页（无需刷新页面）', async ({ page }) => {
+    // 先停掉 MQTT 假设备：它在设备表里、会周期性上报，从而触发一次附带的 REST 刷新，
+    // 会掩盖「扫描结果没有实时推送」这一类缺陷。只有它静默，本用例才真的能守住这条链。
+    stopFake();
+    await new Promise((r) => setTimeout(r, 500));
+
+    // 每次跑用不同 mac：后端会保留上一次扫描结果，固定 mac 会被上一次的缓存干扰
+    const udpMac = `aabbccddee${Math.floor(Math.random() * 256)
+      .toString(16)
+      .padStart(2, '0')}`;
+    // 真 UDP 通道的假设备（与 MQTT 假设备二选一，见 fake-zm1.mjs）
+    const udpFake = spawn(process.execPath, [FAKE_SCRIPT, '--mac', udpMac, '--name', 'zM1发现测试', '--udp'], {
+      stdio: 'ignore',
+    });
+    try {
+      await new Promise((r) => setTimeout(r, 800));
+
+      await page.goto('/#/add');
+      await expect(page.getByTestId('scan-toggle')).toHaveText('开始扫描');
+      await expect(page.getByTestId(`scan-device-${udpMac}`)).toHaveCount(0);
+
+      await page.getByTestId('scan-toggle').click();
+
+      // 关键断言：不刷新页面，扫描结果通过 WS 实时进列表
+      await expect(page.getByTestId(`scan-device-${udpMac}`)).toContainText('zM1发现测试', {
+        timeout: 20_000,
+      });
+      await expect(page.getByTestId('scan-toggle')).toHaveText('停止扫描');
+
+      // 扫描到的设备不落库：设备表里不应出现它
+      const saved = (await api('/devices')).data as { devices: { mac: string }[] };
+      expect(saved.devices.map((d) => d.mac)).not.toContain(udpMac);
+    } finally {
+      udpFake.kill('SIGTERM');
+      await api('/discovery/scan', { method: 'POST', body: JSON.stringify({ action: 'stop' }) }).catch(() => null);
+    }
   });
 });

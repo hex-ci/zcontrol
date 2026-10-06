@@ -100,9 +100,10 @@ interface AppSettings {
 
 | type | data | 说明 |
 | --- | --- | --- |
-| `hello` | `{ status, devices, settings }` | 连接建立时全量快照 |
+| `hello` | `{ status, devices, settings, scan }` | 连接建立时全量快照（`scan` 为 `{ active, devices }`） |
 | `status` | `AppStatus` | MQTT/UDP/扫描状态变化 |
 | `devices` | `{ devices: DeviceDTO[] }` | 设备增删改、名称/在线/顺序变化 |
+| `scan` | `{ devices: DeviceDTO[] }` | 局域网扫描发现的设备（扫描期间实时推送，无需刷新页面） |
 | `data` | `{ mac, source, topic, payload, ts }` | 设备上报（payload 为对象；availability 为字符串 `"1"`/`"0"`） |
 | `sent` | `{ mac, source, topic, payload, ts }` | 后端已下发的报文（前端记日志用） |
 

@@ -25,6 +25,7 @@ export class WsHub {
     bus.on(EV.MQTT_STATUS, () => this.broadcast('status', buildStatus(this.ctx)));
     bus.on(EV.UDP_STATUS, () => this.broadcast('status', buildStatus(this.ctx)));
     bus.on(EV.SCAN, () => this.broadcast('status', buildStatus(this.ctx)));
+    bus.on(EV.SCAN_FOUND, (data) => this.broadcast('scan', data));
     bus.on(EV.DEVICES, (data) => this.broadcast('devices', data));
     bus.on(EV.DATA, (data) => this.broadcast('data', data));
     bus.on(EV.SENT, (data) => this.broadcast('sent', data));
@@ -41,6 +42,8 @@ export class WsHub {
             status: buildStatus(this.ctx),
             devices: this.ctx.registry.snapshot(),
             settings: this.ctx.settings.masked(),
+            // 扫描状态随首帧下发，重连后列表与按钮状态立刻一致
+            scan: { active: this.ctx.discovery.active, devices: this.ctx.discovery.list() },
           },
         };
         try {

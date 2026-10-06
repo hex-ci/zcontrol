@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type WebSocketRoute } from '@playwright/test';
 
 /**
  * 抽屉侧边栏 + 5 个次级页面的 e2e 验证。
@@ -67,15 +67,24 @@ interface Calls {
   saveSettings: Record<string, unknown>[];
   order: Record<string, unknown>[];
   scan: Record<string, unknown>[];
+  /** 模拟后端向页面推送一帧 WS 消息 */
+  ws: (msg: unknown) => void;
 }
 
 /** 给所有接口挂上 fixture，返回记录到的写请求 */
 async function mockApi(page: Page): Promise<Calls> {
-  const calls: Calls = { addDevice: [], saveSettings: [], order: [], scan: [] };
+  let wsRoute: WebSocketRoute | null = null;
+  const calls: Calls = {
+    addDevice: [],
+    saveSettings: [],
+    order: [],
+    scan: [],
+    ws: (msg) => wsRoute?.send(JSON.stringify(msg)),
+  };
 
-  // 拦截 WebSocket：后端可能推送 hello/status，会覆盖 REST fixture。这里保持静默。
-  await page.routeWebSocket('**/ws', () => {
-    /* 不连接真实后端、不发送任何消息 */
+  // 拦截 WebSocket：默认不连接真实后端、不主动发消息；用例可用 calls.ws() 模拟后端推送。
+  await page.routeWebSocket('**/ws', (ws) => {
+    wsRoute = ws;
   });
 
   await page.route('**/api/status', (r) => r.fulfill({ json: STATUS }));
@@ -192,6 +201,30 @@ test('/add：局域网扫描发现设备；手动输入 12 位 MAC 并 POST /api
 
   // 添加成功 → 返回主界面
   await expect(page.locator('.van-nav-bar__title')).toHaveText('测试检测仪');
+});
+
+test('/add：扫描结果既随首帧下发，也会实时推送（修复前必须刷新页面才看得到）', async ({ page }) => {
+  const calls = await mockApi(page);
+  const pushed = { ...SCAN_DEVICE, mac: 'aabbccddee04', name: '推送设备' };
+
+  await page.goto('/#/add');
+  await expect(page.getByText('未发现设备,点击「开始扫描」')).toBeVisible();
+
+  // ① 首帧 hello 里带的扫描结果（等价于「刷新页面后立刻出现」）
+  calls.ws({
+    type: 'hello',
+    data: { status: STATUS, devices: DEVICES, settings: SETTINGS, scan: { active: false, devices: [pushed] } },
+  });
+  await expect(page.getByTestId('scan-device-aabbccddee04')).toContainText('推送设备');
+
+  // ② 扫描过程中的实时推送：点开始扫描后无需刷新，列表自动出现设备
+  await page.getByTestId('scan-toggle').click();
+  await expect(page.getByTestId('scan-status')).toBeVisible();
+  // 开始扫描会先清空列表（REST 返回该时刻的空列表）
+  await expect(page.getByTestId('scan-device-aabbccddee04')).toHaveCount(0);
+
+  calls.ws({ type: 'scan', data: { devices: [pushed] } });
+  await expect(page.getByTestId('scan-device-aabbccddee04')).toContainText('推送设备');
 });
 
 test('/settings：mqtt 地址非法 Toast 报错，合法才 PUT /api/settings', async ({ page }) => {
