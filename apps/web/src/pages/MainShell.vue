@@ -118,13 +118,20 @@ watch(
       <van-button type="primary" size="small" class="w-32" @click="onAdd">增加设备</van-button>
     </van-empty>
 
-    <!-- 抽屉：关掉懒渲染，面板与蒙层同时出现（首次打开不会只有蒙层） -->
-    <van-popup
-      v-model:show="drawer"
-      position="left"
-      :style="{ width: '78%', height: '100%' }"
-      :lazy-render="false"
-      class="p-0!"
+    <!-- 抽屉与蒙层：两者都常驻渲染，只用 opacity / transform 做动画。
+         用 Vant Popup 时面板关闭态是 display:none，打开瞬间浏览器要重新布局绘制整棵子树，
+         这段时间只有蒙层在动（CPU 慢时实测差 ~170ms），所以改成常驻绘制、纯 transform 平移 -->
+    <div
+      data-testid="drawer-overlay"
+      class="fixed inset-0 z-[2000] bg-black/70 transition-opacity duration-300"
+      :class="drawer ? 'opacity-100' : 'pointer-events-none opacity-0'"
+      @click="drawer = false"
+    />
+    <aside
+      data-testid="drawer-panel"
+      class="fixed inset-y-0 left-0 z-[2001] w-[78%] bg-white shadow-xl transition-transform duration-300"
+      :class="drawer ? 'translate-x-0' : '-translate-x-full'"
+      :aria-hidden="drawer ? 'false' : 'true'"
     >
       <DeviceDrawer
         :active-mac="current?.mac ?? ''"
@@ -161,6 +168,6 @@ watch(
           }
         "
       />
-    </van-popup>
+    </aside>
   </div>
 </template>
