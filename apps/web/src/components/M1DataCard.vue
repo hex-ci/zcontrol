@@ -71,12 +71,13 @@ function onBrightnessChange(value: number | number[]) {
       />
     </div>
 
-    <!-- 亮度滑块：范围 0..4，初始 0 -->
-    <div class="mt-5 flex items-center gap-3">
+    <!-- 亮度滑块：范围 0..4，初始 0。
+         旋钮直径 20px，值为 0 时会超出轨道左端 10px，所以滑块两侧留出边距，避免压到「亮度」二字 -->
+    <div class="mt-5 flex items-center gap-2">
       <span class="shrink-0 text-[13px]">亮度</span>
       <van-slider
         v-model="brightness"
-        class="flex-1"
+        class="mx-3.5 flex-1"
         :min="0"
         :max="4"
         :step="1"

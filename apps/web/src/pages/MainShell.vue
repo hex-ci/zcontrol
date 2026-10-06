@@ -118,10 +118,12 @@ watch(
       <van-button type="primary" size="small" class="w-32" @click="onAdd">增加设备</van-button>
     </van-empty>
 
+    <!-- 抽屉：关掉懒渲染，面板与蒙层同时出现（首次打开不会只有蒙层） -->
     <van-popup
       v-model:show="drawer"
       position="left"
       :style="{ width: '78%', height: '100%' }"
+      :lazy-render="false"
       class="p-0!"
     >
       <DeviceDrawer
