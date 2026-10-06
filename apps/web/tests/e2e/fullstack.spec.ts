@@ -15,7 +15,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 
 const API = 'http://127.0.0.1:8090/api';
 const FAKE_MAC = 'aabbccddeeff';
-const FAKE_SCRIPT = 'apps/server/tools/fake-zm1.mjs';
+const FAKE_SCRIPT = 'apps/web/tests/e2e/helpers/fake-zm1.mjs';
 
 let fake: ChildProcess | null = null;
 const stopFake = () => {
@@ -43,8 +43,10 @@ const api = async (path: string, init?: RequestInit) => {
 };
 
 test.describe('全栈联调（真后端 + 本机 broker + 假设备）', () => {
-  // 这批用例共享同一个后端与 broker 连接，必须串行，否则 beforeAll 之间会互相打架
-  test.describe.configure({ mode: 'serial' });
+  // 这批用例共享同一个后端与 broker 连接，必须串行，否则 beforeAll 之间会互相打架。
+  // beforeAll 里有真实等待（等 MQTT 连上、等假设备出第一帧数据），冷启动时超过默认 30 秒，
+  // 会把第一条用例报成 hook 超时并让后面几条全部跳过，所以显式放宽。
+  test.describe.configure({ mode: 'serial', timeout: 120_000 });
 
   test.beforeAll(async () => {
     const health = await api('/health').catch(() => null);
@@ -167,7 +169,7 @@ test.describe('全栈联调（真后端 + 本机 broker + 假设备）', () => {
     const udpMac = `aabbccddee${Math.floor(Math.random() * 256)
       .toString(16)
       .padStart(2, '0')}`;
-    // 真 UDP 通道的假设备（与 MQTT 假设备二选一，见 fake-zm1.mjs）
+    // 真 UDP 通道的假设备（与 MQTT 假设备二选一，见 helpers/fake-zm1.mjs）
     const udpFake = spawn(process.execPath, [FAKE_SCRIPT, '--mac', udpMac, '--name', 'zM1发现测试', '--udp'], {
       stdio: 'ignore',
     });

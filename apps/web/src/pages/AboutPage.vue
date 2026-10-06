@@ -17,7 +17,7 @@ const PROTOCOL_DOC = 'https://github.com/hex-ci/zcontrol/blob/main/docs/PROTOCOL
 onMounted(() => {
   if (!app.status) {
     app.loadStatus().catch(() => {
-      /* 后端空壳忽略 */
+      /* 后端不可用时忽略 */
     });
   }
 });

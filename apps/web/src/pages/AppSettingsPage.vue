@@ -52,7 +52,7 @@ onMounted(async () => {
     try {
       await app.loadSettings();
     } catch {
-      /* 后端空壳时忽略 */
+      /* 后端不可用时忽略 */
     }
   }
   fill();

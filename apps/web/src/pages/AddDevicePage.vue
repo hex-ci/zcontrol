@@ -24,7 +24,7 @@ onMounted(async () => {
   try {
     await app.refreshScan();
   } catch {
-    /* 后端空壳忽略 */
+    /* 后端不可用时忽略 */
   }
 });
 

@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
- * 假 zM1 设备（开发/联调用），行为对齐固件文档与 zM1 协议约定：
+ * 假 zM1 设备 —— 仅供自动化测试使用（全栈 e2e 用例会自己拉起它），不是产品代码。
+ * 行为对齐固件文档与 zM1 协议约定：
  *  - MQTT 模式：订阅 device/zm1/<mac>/set，回 device/zm1/<mac>/state 与 /sensor，
  *    启动时发 retained 的 availability=1；
  *  - UDP 模式：监听 10182 广播，响应 {"cmd":"device report"} 等报文，从 10181 回发；
  *  - 支持字段：name/mac/PM25/formaldehyde/temperature/humidity/brightness/interval/zone/time/version/ssid/ota_progress/task_0..4/setting{name,ota}
  *
  * 用法：
- *   node tools/fake-zm1.mjs --mac aabbccddeeff --name zM1_1234 --broker 127.0.0.1:1883
- *   node tools/fake-zm1.mjs --mac aabbccddeeff --udp
+ *   node apps/web/tests/e2e/helpers/fake-zm1.mjs --mac aabbccddeeff --name ZM1_TEST --broker 127.0.0.1:1883
+ *   node apps/web/tests/e2e/helpers/fake-zm1.mjs --mac aabbccddeeff --udp
  */
 import dgram from 'node:dgram';
 import process from 'node:process';

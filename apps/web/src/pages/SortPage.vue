@@ -36,7 +36,7 @@ onMounted(async () => {
     try {
       await device.load();
     } catch {
-      /* 后端空壳忽略 */
+      /* 后端不可用时忽略 */
     }
   }
   list.value = [...device.devices];

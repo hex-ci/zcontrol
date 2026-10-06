@@ -17,8 +17,6 @@
     "start": "node src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "fake:zm1": "node tools/fake-zm1.mjs --broker 127.0.0.1:1883",
-    "fake:zm1:udp": "node tools/fake-zm1.mjs --mac 001122334455 --name zM1_UDPTEST --udp",
     "zm1:backup": "node tools/zm1-backup.mjs",
     "sniff": "node tools/mqtt-sniff.mjs --broker 127.0.0.1:1883 --sec 10"
   },

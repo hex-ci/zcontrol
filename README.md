@@ -93,13 +93,9 @@ pnpm test:e2e
 pnpm exec playwright test apps/web/tests/e2e/pages
 ```
 
-仓库自带三个联调工具（`apps/server/tools/`），默认面向本机 broker，不会碰真实设备：
+仓库自带两个运维工具（`apps/server/tools/`），默认面向本机 broker，不会碰真实设备：
 
 ```bash
-# 假设备：模拟一台 zM1 收发报文（MQTT 或 UDP 模式）
-node apps/server/tools/fake-zm1.mjs --mac aabbccddeeff --name ZM1_TEST --broker 127.0.0.1:1883
-node apps/server/tools/fake-zm1.mjs --mac 001122334455 --udp
-
 # 只读嗅探：观察 broker 上设备上报的报文（不发布任何内容）
 node apps/server/tools/mqtt-sniff.mjs --broker 127.0.0.1:1883 --topic "device/zm1/+/+" --sec 10
 
@@ -120,7 +116,7 @@ apps/
       transport/       # MQTT / UDP / 局域网发现
       store/           # SQLite 持久化
       ws/              # WebSocket 推送
-    tools/             # 假设备、只读嗅探、备份恢复
+    tools/             # 只读嗅探、备份恢复
     test/              # Vitest
   web/                 # 前端（Vite + Vue 3 + Vant + Tailwind CSS）
     src/pages/         # 主界面 / 亮度定时 / 设备设置 / 添加 / 排序 / 设置 / 关于 / 配网说明
@@ -136,7 +132,7 @@ docs/
 1. 后端**不会主动下发任何设置类报文**，只有界面上的显式操作（拖亮度、点确认、OTA、重启等）才会发。
 2. 所有下行报文都要过后端白名单校验（字段名、类型、取值范围），非法指令直接返回 400，不会到达设备。
 3. MQTT 密码只保存在服务端数据库，接口只返回“是否已设置”，明文不回传浏览器。
-4. 自动化测试只使用 mock 接口与仓库自带的假设备，不存在对真实设备写入的测试路径。
+4. 自动化测试只使用 mock 接口与测试目录里的假设备（`apps/web/tests/e2e/helpers/`），不存在对真实设备写入的测试路径。
 5. zM1 的定时任务第 5 组（`task_4`）被倒计时功能占用，改动前请留意。
 6. 本工具面向内网自用，默认不提供账号体系；若要暴露到公网，请自行加反向代理认证与 HTTPS。
 
