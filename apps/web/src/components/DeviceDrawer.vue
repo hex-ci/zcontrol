@@ -82,11 +82,11 @@ function pick(mac: string) {
 
 <template>
   <div class="flex h-full flex-col bg-white">
-    <!-- nav header：项目标识（渐变背景） -->
+    <!-- nav header：项目标识（渐变背景，上下留白一致） -->
     <div
-      class="flex flex-col justify-end bg-gradient-to-br from-[#4DB6AC] via-[#009688] to-[#00695C] px-4 pt-6 pb-3 text-white"
+      class="flex flex-col justify-end bg-gradient-to-br from-[#4DB6AC] via-[#009688] to-[#00695C] px-4 py-4 text-white"
     >
-      <span class="text-lg font-semibold" data-testid="drawer-title">zControl Web</span>
+      <span class="text-lg leading-4 font-semibold" data-testid="drawer-title">zControl Web</span>
       <span
         class="cursor-pointer text-xs underline opacity-90"
         data-testid="drawer-project"
