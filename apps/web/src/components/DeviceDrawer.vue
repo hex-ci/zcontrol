@@ -82,9 +82,9 @@ function pick(mac: string) {
 
 <template>
   <div class="flex h-full flex-col bg-white">
-    <!-- nav header：项目标识（渐变背景，上下留白一致） -->
+    <!-- nav header：项目标识（渐变背景，上下留白一致；两行之间留 6px 间距） -->
     <div
-      class="flex flex-col justify-end bg-gradient-to-br from-[#4DB6AC] via-[#009688] to-[#00695C] px-4 py-4 text-white"
+      class="flex flex-col justify-end gap-1.5 bg-gradient-to-br from-[#4DB6AC] via-[#009688] to-[#00695C] px-4 py-4 text-white"
     >
       <span class="text-lg leading-4 font-semibold" data-testid="drawer-title">zControl Web</span>
       <span
