@@ -29,7 +29,7 @@ const active = ref(0);
 
 const devices = computed(() => device.devices);
 const current = computed(() => devices.value[active.value] ?? null);
-const title = computed(() => current.value?.name ?? 'zControl智能控制');
+const title = computed(() => current.value?.name ?? 'zControl 智能控制');
 
 watch(
   devices,
