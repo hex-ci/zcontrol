@@ -1,0 +1,25 @@
+node_modules/
+dist/
+dist-*/
+
+# 运行时数据与本地状态
+data/
+*.sqlite
+*.db
+.env
+.env.*
+
+# 测试产物
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# 本地内部资料（不对开放仓库发布）：开发计划、源码规格提取、真机备份、验收截图
+docs/_internal/
+
+# 编辑器/系统
+.DS_Store
+.idea/
+.vscode/
+*.log

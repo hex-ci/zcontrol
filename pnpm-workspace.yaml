@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+
+onlyBuiltDependencies:
+  - esbuild
+
+minimumReleaseAge: 0
+
+fetchTimeout: 300000
+fetchRetries: 5
+fetchRetryMintimeout: 20000
+fetchRetryMaxtimeout: 120000

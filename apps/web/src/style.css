@@ -1,0 +1,36 @@
+@layer theme, base, vant, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import 'vant/lib/index.css' layer(vant);
+
+@source '../index.html';
+@source './**/*.{vue,ts}';
+
+:root {
+  --zcontrol-font: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+
+  /* 主题色：主色 #3F51B5、深色 #303F9F、强调色 #FF4081 */
+  --van-primary-color: #3f51b5;
+  --van-nav-bar-background: #3f51b5;
+  --van-nav-bar-title-text-color: #ffffff;
+  --van-nav-bar-text-color: #ffffff;
+  --van-nav-bar-icon-color: #ffffff;
+  --van-nav-bar-arrow-color: #ffffff;
+  --van-tabs-bottom-bar-color: #3f51b5;
+  --van-tab-active-text-color: #3f51b5;
+  --van-switch-on-background: #3f51b5;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  font-family: var(--zcontrol-font);
+  background: #f7f8fa;
+}

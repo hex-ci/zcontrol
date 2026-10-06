@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 后端单元测试
+        run: pnpm --filter @zcontrol/server test
+
+      - name: 前端构建
+        run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # 只跑使用 mock 接口的单页用例：不依赖真实设备、不发 UDP 广播
+      - name: 启动前端开发服务器
+        run: pnpm --filter @zcontrol/web exec vite --host 127.0.0.1 --port 5273 &
+
+      - name: 等待前端就绪
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:5273/ >/dev/null; then
+              echo "前端已就绪"; exit 0
+            fi
+            sleep 1
+          done
+          echo "等待前端超时"; exit 1
+
+      - name: 单页端到端测试
+        run: pnpm exec playwright test apps/web/tests/e2e/pages

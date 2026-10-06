@@ -1,0 +1,43 @@
+{
+  "name": "zcontrol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "zM1 空气检测仪（斐讯悟空 M1）的 Web 控制台：Node.js 后端 + Vue 前端",
+  "license": "MIT",
+  "author": "Hex <https://github.com/hex-ci>",
+  "homepage": "https://github.com/hex-ci/zcontrol#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hex-ci/zcontrol.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hex-ci/zcontrol/issues"
+  },
+  "keywords": [
+    "zm1",
+    "air-detector",
+    "pm25",
+    "mqtt",
+    "udp",
+    "smart-home",
+    "vue3",
+    "vant",
+    "fastify"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel --filter @zcontrol/server --filter @zcontrol/web dev",
+    "dev:server": "pnpm --filter @zcontrol/server dev",
+    "dev:web": "pnpm --filter @zcontrol/web dev",
+    "build": "pnpm --filter @zcontrol/web build",
+    "start": "pnpm --filter @zcontrol/server start",
+    "test": "pnpm --filter @zcontrol/server test",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@12.10.0"
+}

@@ -1,0 +1,454 @@
+<script setup lang="ts">
+/**
+ * zM1 设备设置页。
+ * preference key 顺序：name / mac / always_UDP / ssid / zone /
+ * interval / fw_version / time_calibration / restart / regetdata。
+ * 长按「当前版本」的下一项（time_calibration）→ 弹出固件地址输入框。
+ */
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { showConfirmDialog, showDialog, showToast } from 'vant';
+import AppNavBar from '../components/AppNavBar.vue';
+import Zm1SettingZonePicker, {
+  ZONE_TEXTS,
+  ZONE_VALUES,
+} from '../components/Zm1SettingZonePicker.vue';
+import Zm1SettingTextDialog from '../components/Zm1SettingTextDialog.vue';
+import Zm1SettingOtaProgress from '../components/Zm1SettingOtaProgress.vue';
+import { api } from '../api';
+import { useDeviceStore } from '../stores/devices';
+
+const route = useRoute();
+const router = useRouter();
+const store = useDeviceStore();
+
+const mac = computed(() => String(route.params.mac ?? ''));
+const device = computed(() => store.byMac(mac.value));
+const state = computed(() => device.value?.state ?? {});
+
+const deviceName = computed(() => device.value?.name ?? '');
+const ssid = computed(() => state.value.ssid ?? '');
+const version = computed(() => state.value.version ?? '');
+const intervalText = computed(() =>
+  state.value.interval == null ? '' : String(state.value.interval),
+);
+const zoneText = computed(() => {
+  const z = state.value.zone;
+  if (z == null) return '';
+  const i = ZONE_VALUES.indexOf(z);
+  return i >= 0 ? ZONE_TEXTS[i] : '';
+});
+
+//region 总是通过UDP发送数据（GET/PUT /api/devices/:mac/settings）
+const alwaysUdp = ref(false);
+
+onMounted(async () => {
+  if (!store.loaded) {
+    try {
+      await store.load();
+    } catch {
+      /* 由 App.vue 兜底 */
+    }
+  }
+  try {
+    const r = await store.deviceSettings(mac.value);
+    alwaysUdp.value = !!r.always_UDP;
+  } catch {
+    /* 忽略读取失败，保持默认 false */
+  }
+});
+
+async function onUdpChange(v: boolean): Promise<void> {
+  const prev = alwaysUdp.value;
+  alwaysUdp.value = v;
+  try {
+    await store.saveDeviceSettings(mac.value, { always_UDP: v });
+  } catch {
+    alwaysUdp.value = prev;
+    showToast('保存失败');
+  }
+}
+//endregion
+
+//region 名称（EditTextPreference dialogTitle=设备名称）
+const nameShow = ref(false);
+
+async function onNameConfirm(v: string): Promise<void> {
+  const name = v.trim();
+  if (!name) return;
+  await store.sendCmd(mac.value, { setting: { name } });
+  const d = device.value;
+  if (d) d.name = name;
+}
+//endregion
+
+//region MAC地址(点击复制)
+async function copyMac(): Promise<void> {
+  const text = mac.value;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      throw new Error('clipboard unavailable');
+    }
+    showToast('已复制mac地址');
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showToast('已复制mac地址');
+    } catch {
+      showToast('复制mac地址失败');
+    }
+    document.body.removeChild(ta);
+  }
+}
+//endregion
+
+//region 时区（ListPreference entries=@array/zone）
+const zoneShow = ref(false);
+/** 发出 {time:-1} 后等待设备回校时结果，避免页面加载时的历史 time 触发提示 */
+let pendingTime = false;
+
+async function onZoneConfirm(zone: number): Promise<void> {
+  await store.sendCmd(mac.value, { zone });
+  await store.sendCmd(mac.value, { time: -1 });
+  pendingTime = true;
+  showToast('已发送时区/校时请求,请等待校时结果返回');
+}
+//endregion
+
+//region 上报频率(秒)（范围 1-255）
+const intervalShow = ref(false);
+
+async function onIntervalConfirm(v: string): Promise<void> {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 255) {
+    showToast('输入有误!范围1-255');
+    return;
+  }
+  await store.sendCmd(mac.value, { interval: n });
+}
+//endregion
+
+//region 重新获取数据
+async function regetData(): Promise<void> {
+  await store.sendCmd(mac.value, {
+    version: null,
+    interval: null,
+    ssid: null,
+    zone: null,
+  });
+}
+//endregion
+
+//region 版本 / OTA（未获取到版本先弹提示）
+function isGetVersion(): boolean {
+  if (!version.value) {
+    void showDialog({
+      title: '未获取到当前设备版本',
+      message: '请点击重新获取数据.获取到当前设备版本后重试.',
+      confirmButtonText: '确定',
+    }).then(() => {
+      void regetData();
+      showToast('请求版本数据...');
+    });
+    return false;
+  }
+  return true;
+}
+
+async function onVersionClick(): Promise<void> {
+  if (!isGetVersion()) return;
+  try {
+    const r = await api.otaCheck(mac.value);
+    if (!r.hasUpdate) {
+      showToast('已是最新版本');
+      return;
+    }
+    try {
+      await showConfirmDialog({
+        title: `获取到最新版本:${r.tag_name}`,
+        message: `${r.title}\n${r.message}`,
+        confirmButtonText: '更新',
+        cancelButtonText: '取消',
+        messageAlign: 'left',
+      });
+      await store.sendCmd(mac.value, { setting: { ota: r.ota } });
+      otaFlag = true;
+    } catch {
+      /* 用户取消 */
+    }
+  } catch {
+    showToast('获取最新版本信息失败');
+  }
+}
+//endregion
+
+//region 手动校时 + 长按 debugFWUpdate
+let pendingTimeCalibration = false;
+
+async function manualCalibrate(): Promise<void> {
+  if (!isGetVersion()) return;
+  try {
+    await showConfirmDialog({
+      title: '手动校时?',
+      message: '注意:校时后,必须等待一分钟才能校时成功,所以请不要快速连续进行手动校时',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+    });
+    await store.sendCmd(mac.value, { time: -1 });
+    pendingTime = true;
+    pendingTimeCalibration = true;
+  } catch {
+    /* 用户取消 */
+  }
+}
+
+//region 长按（当前版本下一项 → 手动校时）
+const fwShow = ref(false);
+let pressTimer: number | null = null;
+let longFired = false;
+
+function clearPress(): void {
+  if (pressTimer !== null) {
+    window.clearTimeout(pressTimer);
+    pressTimer = null;
+  }
+}
+
+function startPress(): void {
+  clearPress();
+  longFired = false;
+  pressTimer = window.setTimeout(() => {
+    pressTimer = null;
+    longFired = true;
+    debugFWUpdate();
+  }, 600);
+}
+
+function onCalibrationClick(): void {
+  if (longFired) {
+    longFired = false;
+    return;
+  }
+  void manualCalibrate();
+}
+
+function debugFWUpdate(): void {
+  if (!isGetVersion()) return;
+  fwShow.value = true;
+}
+
+async function onFirmwareConfirm(uri: string): Promise<void> {
+  const u = uri.trim();
+  if (u.length < 1) return;
+  if (u.startsWith('http')) {
+    await store.sendCmd(mac.value, { setting: { ota: u } });
+    otaFlag = true;
+  } else {
+    showToast('地址不合法');
+  }
+}
+//endregion
+//endregion
+
+//region 重启设备
+async function onRestart(): Promise<void> {
+  try {
+    await showConfirmDialog({
+      title: '重启设备?',
+      message: '如果设备死机此处重启可能无效,依然需要手动拔插插头才能重启设备',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+    });
+    await store.sendCmd(mac.value, { cmd: 'restart' });
+  } catch {
+    /* 用户取消 */
+  }
+}
+//endregion
+
+//region OTA 进度回显
+const otaProgress = ref(0);
+const otaShow = ref(false);
+/** 是否处于 OTA 流程 */
+let otaFlag = false;
+
+watch(
+  () => state.value.ota_progress,
+  (p) => {
+    if (p == null) return;
+    if (p >= 0 && p < 100) {
+      otaFlag = true;
+      otaProgress.value = p;
+      otaShow.value = true;
+      return;
+    }
+    if (!otaFlag) return;
+    otaFlag = false;
+    otaShow.value = false;
+    void showDialog({
+      title: '',
+      message: p === -1 ? '固件更新失败!请重试' : '固件更新成功!',
+      confirmButtonText: '确定',
+    });
+  },
+);
+//endregion
+
+//region 校时结果（time < 1586000000 视为失败，否则按 GMT+0 显示）
+function formatGmt0(sec: number): string {
+  const d = new Date(sec * 1000);
+  const p = (n: number): string => String(n).padStart(2, '0');
+  return (
+    `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}` +
+    ` ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`
+  );
+}
+
+watch(
+  () => state.value.time,
+  (t, old) => {
+    if (t == null || t === old || !pendingTime) return;
+    pendingTime = false;
+    pendingTimeCalibration = false;
+    if (Number(t) < 1586000000) {
+      showToast('校时失败,请重试');
+      return;
+    }
+    showToast({ message: `校时结果:${formatGmt0(Number(t))}`, duration: 5000 });
+  },
+);
+//endregion
+
+function goBack(): void {
+  if (window.history.length > 1) router.back();
+  else router.push('/');
+}
+</script>
+
+<template>
+  <div class="flex min-h-full flex-col">
+    <AppNavBar title="设备设置" back @back="goBack" />
+
+    <div class="flex-1 py-3">
+      <van-cell-group inset title="设备">
+        <!-- 名称 -->
+        <van-cell
+          title="名称"
+          :value="deviceName"
+          is-link
+          @click="nameShow = true"
+        />
+
+        <!-- MAC地址(点击复制) -->
+        <van-cell title="MAC地址(点击复制)" :value="mac" @click="copyMac" />
+
+        <!-- 总是通过UDP发送数据 -->
+        <van-cell title="总是通过UDP发送数据" label="即使连接MQTT服务器,也使用UDP发送数据">
+          <template #right-icon>
+            <van-switch :model-value="alwaysUdp" size="20" @update:model-value="onUdpChange" />
+          </template>
+        </van-cell>
+
+        <!-- 连接的热点 -->
+        <van-cell title="连接的热点" :value="ssid" />
+
+        <!-- 时区 -->
+        <van-cell title="时区" :value="zoneText" is-link @click="zoneShow = true" />
+
+        <!-- 上报频率(秒) -->
+        <van-cell
+          title="上报频率(秒)"
+          :value="intervalText"
+          is-link
+          @click="intervalShow = true"
+        />
+
+        <!-- 当前版本(点击检查新版本) -->
+        <van-cell
+          title="当前版本(点击检查新版本)"
+          :value="version"
+          is-link
+          @click="onVersionClick"
+        />
+
+        <!-- 手动校时（长按进入固件地址输入） -->
+        <van-cell
+          title="手动校时"
+          label="自动校时异常时使用"
+          @click="onCalibrationClick"
+          @mousedown="startPress"
+          @mouseup="clearPress"
+          @mouseleave="clearPress"
+          @touchstart.passive="startPress"
+          @touchend="clearPress"
+          @touchmove.passive="clearPress"
+          @touchcancel="clearPress"
+        />
+
+        <!-- 重启设备 -->
+        <van-cell title="重启设备" is-link @click="onRestart" />
+
+        <!-- 重新获取数据 -->
+        <van-cell
+          title="重新获取数据"
+          label="获取版本/激活状态失败时点此重试"
+          is-link
+          @click="regetData"
+        />
+      </van-cell-group>
+    </div>
+
+    <!-- 时区选择器 -->
+    <Zm1SettingZonePicker
+      v-model:show="zoneShow"
+      :model-value="state.zone ?? null"
+      @confirm="onZoneConfirm"
+    />
+
+    <!-- 名称 -->
+    <Zm1SettingTextDialog
+      v-model:show="nameShow"
+      title="设备名称"
+      :initial="deviceName"
+      placeholder="请输入设备名称"
+      confirm-text="保存"
+      cancel-text="取消"
+      @confirm="onNameConfirm"
+    />
+
+    <!-- 上报频率 -->
+    <Zm1SettingTextDialog
+      v-model:show="intervalShow"
+      title="上报频率"
+      message="单位:秒, 范围1-255"
+      :initial="intervalText"
+      input-type="number"
+      confirm-text="保存"
+      cancel-text="取消"
+      @confirm="onIntervalConfirm"
+    />
+
+    <!-- 手动输入固件下载地址（长按触发） -->
+    <Zm1SettingTextDialog
+      v-model:show="fwShow"
+      title="请输入固件下载地址"
+      message="警告:输入错误的地址可能导致固件损坏!"
+      placeholder="https://...../ota.bin"
+      confirm-text="确定"
+      cancel-text="取消"
+      @confirm="onFirmwareConfirm"
+    />
+
+    <!-- OTA 进度 -->
+    <Zm1SettingOtaProgress v-model:show="otaShow" :progress="otaProgress" />
+  </div>
+</template>

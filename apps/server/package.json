@@ -1,0 +1,37 @@
+{
+  "name": "@zcontrol/server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "zControl Web 后端：zM1 空气检测仪的 MQTT / UDP 通信、设备发现与 REST + WebSocket 服务",
+  "author": "Hex <https://github.com/hex-ci>",
+  "license": "MIT",
+  "homepage": "https://github.com/hex-ci/zcontrol#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hex-ci/zcontrol.git",
+    "directory": "apps/server"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fake:zm1": "node tools/fake-zm1.mjs --broker 127.0.0.1:1883",
+    "fake:zm1:udp": "node tools/fake-zm1.mjs --mac 001122334455 --name zM1_UDPTEST --udp",
+    "zm1:backup": "node tools/zm1-backup.mjs",
+    "sniff": "node tools/mqtt-sniff.mjs --broker 127.0.0.1:1883 --sec 10"
+  },
+  "dependencies": {
+    "@fastify/static": "^10.1.5",
+    "@fastify/websocket": "^11.3.3",
+    "bonjour-service": "^1.4.4",
+    "fastify": "^5.12.5",
+    "mqtt": "^5.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
+  }
+}
