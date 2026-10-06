@@ -16,10 +16,12 @@ import Zm1SettingZonePicker, {
 import Zm1SettingTextDialog from '../components/Zm1SettingTextDialog.vue';
 import Zm1SettingOtaProgress from '../components/Zm1SettingOtaProgress.vue';
 import { api } from '../api';
+import { useAppStore } from '../stores/app';
 import { useDeviceStore } from '../stores/devices';
 
 const route = useRoute();
 const router = useRouter();
+const app = useAppStore();
 const store = useDeviceStore();
 
 const mac = computed(() => String(route.params.mac ?? ''));
@@ -39,6 +41,75 @@ const zoneText = computed(() => {
   return i >= 0 ? ZONE_TEXTS[i] : '';
 });
 
+//region 进页面自动请求设备数据（对齐原版：设置页一打开就请求 version/interval/ssid/zone）
+const loading = ref(false);
+let loadTimer: number | null = null;
+
+/** 四个字段是否还有没取到的（都有值时不必显示加载中） */
+const DATA_FIELDS = ['version', 'interval', 'ssid', 'zone'] as const;
+type DataField = (typeof DATA_FIELDS)[number];
+
+const missingFields = (): DataField[] => DATA_FIELDS.filter((f) => state.value[f] == null);
+
+/** 本次查询在等哪些字段（避免被无关的状态更新提前结束加载态） */
+let pendingFields: DataField[] = [];
+
+function clearLoadTimer(): void {
+  if (loadTimer !== null) {
+    window.clearTimeout(loadTimer);
+    loadTimer = null;
+  }
+}
+
+/**
+ * 请求设备当前数据：四个字段全为 null 表示「只查询、不改值」，设备会回报当前值。
+ * 缺数据的字段先显示加载中；等到这些字段回来、或超时（提示手动重试）后结束。
+ */
+async function queryDeviceData(): Promise<void> {
+  clearLoadTimer();
+  pendingFields = missingFields();
+  loading.value = pendingFields.length > 0;
+  if (loading.value) {
+    loadTimer = window.setTimeout(() => {
+      loadTimer = null;
+      loading.value = false;
+      showToast('未获取到设备数据,请点「重新获取数据」重试');
+    }, 6000);
+  }
+  try {
+    await store.sendCmd(mac.value, { version: null, interval: null, ssid: null, zone: null });
+  } catch {
+    /* 下发失败由 sendCmd 内部提示 */
+  }
+}
+
+/** 等待中的字段都到齐 → 结束加载态 */
+watch(
+  () => [state.value.version, state.value.interval, state.value.ssid, state.value.zone],
+  () => {
+    if (!loading.value) return;
+    if (pendingFields.every((f) => state.value[f] != null)) {
+      clearLoadTimer();
+      loading.value = false;
+    }
+  },
+);
+
+// MqttConnected / MqttDisconnected 时重新查询（与原版一致）
+watch(
+  () => app.status?.mqtt.connected,
+  (now, before) => {
+    if (before === undefined || now === before) return;
+    void queryDeviceData();
+  },
+);
+
+/** 值还没取到时显示「加载中」，避免空白的单元格看起来像坏了 */
+function valueOrLoading(v: string): string {
+  return loading.value && !v ? '加载中' : v;
+}
+//endregion
+
 //region 总是通过UDP发送数据（GET/PUT /api/devices/:mac/settings）
 const alwaysUdp = ref(false);
 
@@ -56,6 +127,7 @@ onMounted(async () => {
   } catch {
     /* 忽略读取失败，保持默认 false */
   }
+  void queryDeviceData();
 });
 
 async function onUdpChange(v: boolean): Promise<void> {
@@ -139,12 +211,7 @@ async function onIntervalConfirm(v: string): Promise<void> {
 
 //region 重新获取数据
 async function regetData(): Promise<void> {
-  await store.sendCmd(mac.value, {
-    version: null,
-    interval: null,
-    ssid: null,
-    zone: null,
-  });
+  await queryDeviceData();
 }
 //endregion
 
@@ -359,15 +426,15 @@ function goBack(): void {
         </van-cell>
 
         <!-- 连接的热点 -->
-        <van-cell title="连接的热点" :value="ssid" />
+        <van-cell title="连接的热点" :value="valueOrLoading(ssid)" />
 
         <!-- 时区 -->
-        <van-cell title="时区" :value="zoneText" is-link @click="zoneShow = true" />
+        <van-cell title="时区" :value="valueOrLoading(zoneText)" is-link @click="zoneShow = true" />
 
         <!-- 上报频率(秒) -->
         <van-cell
           title="上报频率(秒)"
-          :value="intervalText"
+          :value="valueOrLoading(intervalText)"
           is-link
           @click="intervalShow = true"
         />
@@ -375,7 +442,7 @@ function goBack(): void {
         <!-- 当前版本(点击检查新版本) -->
         <van-cell
           title="当前版本(点击检查新版本)"
-          :value="version"
+          :value="valueOrLoading(version)"
           is-link
           @click="onVersionClick"
         />

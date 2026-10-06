@@ -141,16 +141,21 @@ async function setup(
   return h;
 }
 
-async function open(page: Page): Promise<void> {
+/** 进页面时的自动查询（version/interval/ssid/zone 全 null）会先落一条，之后才是用户操作 */
+const userCmds = (h: Harness): Record<string, unknown>[] => h.cmds.slice(1);
+
+async function open(page: Page, h: Harness): Promise<void> {
   await page.goto(`/#/device/${MAC}/settings`);
   await expect(page.getByText('设备设置').first()).toBeVisible();
   // 等待设备（含 state）加载完成，避免交互早于 /api/devices 返回
   await expect(page.getByText('测试检测仪').first()).toBeVisible();
+  // 等进页面自动发出的查询落地，后续断言只针对用户操作，不受它干扰
+  await expect.poll(() => h.cmds.length).toBeGreaterThan(0);
 }
 
 test('设备设置页条目齐全（并截图）', async ({ page }) => {
-  await setup(page);
-  await open(page);
+  const h = await setup(page);
+  await open(page, h);
 
   const expected = [
     '名称',
@@ -180,9 +185,33 @@ test('设备设置页条目齐全（并截图）', async ({ page }) => {
   await page.screenshot({ path: 'docs/screenshots/12-device-settings.png', fullPage: true });
 });
 
+test('进页面自动请求设备数据：等待期间显示加载中，设备回包后出现详细数据', async ({ page }) => {
+  // 真机首次进设置页就是这样：设备侧还没有 version/ssid/zone/interval
+  const device = { ...DEVICE, state: {} };
+  const h = await setup(page, { device });
+  await page.goto(`/#/device/${MAC}/settings`);
+  await expect(page.getByText('设备设置').first()).toBeVisible();
+
+  // 不需要用户点任何东西：进页面即发出完整查询报文
+  await expect.poll(() => h.cmds.length).toBe(1);
+  expect(h.cmds[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
+
+  // 还没取到的四项显示「加载中」
+  const cell = (title: string) => page.locator('.van-cell').filter({ hasText: title }).first();
+  await expect(page.getByText('加载中')).toHaveCount(4);
+
+  // 设备回包 → 加载态结束，出现详细数据
+  h.pushState({ version: 'v0.1.4', ssid: 'MyWiFi', zone: 480, interval: 60 });
+  await expect(page.getByText('加载中')).toHaveCount(0);
+  await expect(cell('当前版本(点击检查新版本)')).toContainText('v0.1.4');
+  await expect(cell('连接的热点')).toContainText('MyWiFi');
+  await expect(cell('时区')).toContainText('UTC+08:00');
+  await expect(cell('上报频率(秒)')).toContainText('60');
+});
+
 test('时区选择器 33 项，选 UTC+08:00 下发 zone 与 time', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   await page.getByText('时区').click();
 
@@ -193,14 +222,14 @@ test('时区选择器 33 项，选 UTC+08:00 下发 zone 与 time', async ({ pag
   await page.locator('.van-picker__confirm').click();
 
   await expect(page.getByText('已发送时区/校时请求,请等待校时结果返回')).toBeVisible();
-  await expect.poll(() => h.cmds.length).toBe(2);
-  expect(h.cmds[0]).toEqual({ zone: 480 });
-  expect(h.cmds[1]).toEqual({ time: -1 });
+  await expect.poll(() => userCmds(h).length).toBe(2);
+  expect(userCmds(h)[0]).toEqual({ zone: 480 });
+  expect(userCmds(h)[1]).toEqual({ time: -1 });
 });
 
 test('上报频率超出 1-255 报错且不下发，合法值下发', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   const input = page.locator('.van-dialog .van-field__control');
 
@@ -210,7 +239,7 @@ test('上报频率超出 1-255 报错且不下发，合法值下发', async ({ p
   await page.locator('.van-dialog__confirm').click();
   await expect(page.getByText('输入有误!范围1-255')).toBeVisible();
   await page.waitForTimeout(300);
-  expect(h.cmds).toHaveLength(0);
+  expect(userCmds(h)).toHaveLength(0);
 
   // 下界外：0
   await page.getByText('上报频率(秒)').click();
@@ -218,19 +247,19 @@ test('上报频率超出 1-255 报错且不下发，合法值下发', async ({ p
   await page.locator('.van-dialog__confirm').click();
   await expect(page.getByText('输入有误!范围1-255')).toBeVisible();
   await page.waitForTimeout(300);
-  expect(h.cmds).toHaveLength(0);
+  expect(userCmds(h)).toHaveLength(0);
 
   // 合法：60
   await page.getByText('上报频率(秒)').click();
   await input.fill('60');
   await page.locator('.van-dialog__confirm').click();
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ interval: 60 });
+  await expect.poll(() => userCmds(h).length).toBe(1);
+  expect(userCmds(h)[0]).toEqual({ interval: 60 });
 });
 
 test('重启设备需确认后才下发', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   await page.getByText('重启设备').click();
   await expect(page.getByText('重启设备?')).toBeVisible();
@@ -239,25 +268,25 @@ test('重启设备需确认后才下发', async ({ page }) => {
   ).toBeVisible();
 
   // 未确认前不下发
-  expect(h.cmds).toHaveLength(0);
+  expect(userCmds(h)).toHaveLength(0);
 
   await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ cmd: 'restart' });
+  await expect.poll(() => userCmds(h).length).toBe(1);
+  expect(userCmds(h)[0]).toEqual({ cmd: 'restart' });
 });
 
 test('重新获取数据下发完整查询报文', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   await page.getByText('重新获取数据').click();
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
+  await expect.poll(() => userCmds(h).length).toBe(1);
+  expect(userCmds(h)[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
 });
 
 test('点当前版本会 GET ota/check 并可按响应弹窗更新', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   await page.getByText('当前版本(点击检查新版本)').click();
   await expect.poll(() => h.otaChecks).toBe(1);
@@ -266,25 +295,25 @@ test('点当前版本会 GET ota/check 并可按响应弹窗更新', async ({ pa
   await expect(page.getByText('zM1 新版本说明')).toBeVisible();
   await expect(page.getByText('修复已知问题')).toBeVisible();
 
-  expect(h.cmds).toHaveLength(0);
+  expect(userCmds(h)).toHaveLength(0);
   await page.getByRole('button', { name: '更新' }).click();
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ setting: { ota: 'https://example.com/zM1/ota.bin' } });
+  await expect.poll(() => userCmds(h).length).toBe(1);
+  expect(userCmds(h)[0]).toEqual({ setting: { ota: 'https://example.com/zM1/ota.bin' } });
 });
 
 test('已是最新版本时只弹 Toast', async ({ page }) => {
   const h = await setup(page, { ota: OTA_LATEST });
-  await open(page);
+  await open(page, h);
 
   await page.getByText('当前版本(点击检查新版本)').click();
   await expect(page.getByText('已是最新版本')).toBeVisible();
-  expect(h.cmds).toHaveLength(0);
+  expect(userCmds(h)).toHaveLength(0);
 });
 
 test('未获取到版本时提示并重新获取数据', async ({ page }) => {
   const device = { ...DEVICE, state: { ssid: 'TestWiFi', zone: 0, interval: 60 } };
   const h = await setup(page, { device });
-  await open(page);
+  await open(page, h);
 
   await page.getByText('当前版本(点击检查新版本)').click();
   await expect(page.getByText('未获取到当前设备版本')).toBeVisible();
@@ -292,13 +321,13 @@ test('未获取到版本时提示并重新获取数据', async ({ page }) => {
   expect(h.otaChecks).toBe(0);
 
   await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
+  await expect.poll(() => userCmds(h).length).toBe(1);
+  expect(userCmds(h)[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
 });
 
 test('长按手动校时行弹出固件地址输入框', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   const cell = page.locator('.van-cell').filter({ hasText: '手动校时' });
   const longPress = async (): Promise<void> => {
@@ -320,26 +349,26 @@ test('长按手动校时行弹出固件地址输入框', async ({ page }) => {
   await dialog().locator('.van-dialog__confirm').click();
   await expect(page.getByText('地址不合法')).toBeVisible();
   await expect(dialog()).toBeHidden();
-  expect(h.cmds).toHaveLength(0);
+  expect(userCmds(h)).toHaveLength(0);
 
   // 合法 http 地址才下发
   await longPress();
   await expect(dialog()).toBeVisible();
   await input().fill('http://example.com/zM1/ota.bin');
   await dialog().locator('.van-dialog__confirm').click();
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ setting: { ota: 'http://example.com/zM1/ota.bin' } });
+  await expect.poll(() => userCmds(h).length).toBe(1);
+  expect(userCmds(h)[0]).toEqual({ setting: { ota: 'http://example.com/zM1/ota.bin' } });
 });
 
 test('收到校时结果按 GMT+0 显示 yyyy-MM-dd HH:mm:ss', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   await page.getByText('手动校时').click();
   await expect(page.getByText('手动校时?')).toBeVisible();
   await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ time: -1 });
+  await expect.poll(() => userCmds(h).length).toBe(1);
+  expect(userCmds(h)[0]).toEqual({ time: -1 });
   await page.waitForTimeout(300);
 
   // 模拟设备回校时结果：1700000000 = 2023-11-14T22:13:20Z
@@ -349,11 +378,11 @@ test('收到校时结果按 GMT+0 显示 yyyy-MM-dd HH:mm:ss', async ({ page }) 
 
 test('校时结果小于阈值提示失败', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   await page.getByText('手动校时').click();
   await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => h.cmds.length).toBe(1);
+  await expect.poll(() => userCmds(h).length).toBe(1);
   await page.waitForTimeout(300);
 
   h.pushState({ time: 1000000000 });
@@ -362,7 +391,7 @@ test('校时结果小于阈值提示失败', async ({ page }) => {
 
 test('OTA 进度弹窗与成功/失败提示', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   // 进行中：0-99
   h.pushState({ ota_progress: 42 });
@@ -376,7 +405,7 @@ test('OTA 进度弹窗与成功/失败提示', async ({ page }) => {
 
 test('OTA 进度 -1 提示失败', async ({ page }) => {
   const h = await setup(page);
-  await open(page);
+  await open(page, h);
 
   h.pushState({ ota_progress: 7 });
   await expect(page.getByText('进度:7%')).toBeVisible();
