@@ -167,7 +167,12 @@ test('zM1 主页：四个数值区/亮度/日志/入口 与下发报文', async 
   await expect(knob).toHaveAttribute('aria-valuenow', '3');
   await expect(knob).toHaveAttribute('aria-valuemax', '4');
 
-  // 3) 日志区存在，首行是 header 时间
+  // 3) 日志区默认隐藏：只看到「日志」折叠条，内容不渲染
+  await expect(page.getByTestId('m1-log-toggle')).toBeVisible();
+  await expect(page.getByTestId('m1-log')).toHaveCount(0);
+
+  // 点折叠条才展开，首行是 header 时间
+  await page.getByTestId('m1-log-toggle').click();
   await expect(page.getByTestId('m1-log')).toBeVisible();
   await expect(page.getByTestId('m1-log-header')).toHaveText(
     /^---- \d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} ----$/,
@@ -196,7 +201,9 @@ test('zM1 主页：四个数值区/亮度/日志/入口 与下发报文', async 
   await dragSliderToEnd(page);
   await expect.poll(() => cmds[cmds.length - 1]).toEqual({ brightness: 4 });
 
-  // 截图（Pixel 7 视口）
+  // 截图（Pixel 7 视口）：取默认折叠状态
+  await page.getByTestId('m1-log-toggle').click();
+  await expect(page.getByTestId('m1-log')).toHaveCount(0);
   await page.screenshot({ path: 'docs/screenshots/10-m1-page.png' });
 
   // 6) 连接状态变化时也发一次查询，状态标签变「未连接」
@@ -218,6 +225,8 @@ test('zM1 主页：四个数值区/亮度/日志/入口 与下发报文', async 
   expect(cmds[cmds.length - 1]).toEqual({ brightness: null });
 
   // 8) 长按日志区 → 确认框「清除log?」，确认后清空（写入一行 'log已经清空'）
+  await page.getByTestId('m1-log-toggle').click();
+  await expect(page.getByTestId('m1-log')).toBeVisible();
   const box = await page.getByTestId('m1-log').boundingBox();
   if (!box) throw new Error('日志区未渲染');
   await page.mouse.move(box.x + 40, box.y + 20);
@@ -244,7 +253,9 @@ test('zM1 主页：未收到数据时显示占位', async ({ page }) => {
   await expect(page.getByTestId('m1-humidity')).toHaveText('--.-%');
   // 未收到亮度数据时 seekBar 停在初始进度 0
   await expect(page.locator('.van-slider [role="slider"]')).toHaveAttribute('aria-valuenow', '0');
-  await expect(page.getByTestId('m1-log')).toBeVisible();
+  // 日志默认隐藏（折叠条在，内容不在）
+  await expect(page.getByTestId('m1-log-toggle')).toBeVisible();
+  await expect(page.getByTestId('m1-log')).toHaveCount(0);
   // 挂载查询仍会下发
   await expect.poll(() => cmds.length).toBeGreaterThan(0);
   expect(cmds[0]).toEqual({ brightness: null });

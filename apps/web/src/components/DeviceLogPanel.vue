@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
- * 底部日志区：高 66px + 可滚动 + 13px 等宽字体。
+ * 底部日志区（默认隐藏，点「日志」按钮展开）：
+ *   展开后高 66px + 可滚动 + 13px 等宽字体。
  * 日志格式：
  *   首行 `---- yyyy/MM/dd HH:mm:ss ----`（useLogStore 的 header），
  *   之后每行 `[HH:mm:ss.sss]内容`（stamp + text）。
- * 长按弹「清除log?」确认框（确认/取消），确认调 log.clear(mac)；
- * 右上角另给一个清除按钮（Vant 图标），方便移动端操作。
+ * 长按日志内容弹「清除log?」确认框；展开时右上角另有清除按钮。
  */
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { showConfirmDialog } from 'vant';
@@ -16,6 +16,9 @@ const props = defineProps<{ mac: string }>();
 const log = useLogStore();
 const scroller = ref<HTMLElement | null>(null);
 
+/** 日志栏默认隐藏，点击折叠条才展开 */
+const show = ref(false);
+
 const lines = computed(() => log.lines(props.mac));
 const headerText = computed(() => header(log.headerAt[props.mac] ?? Date.now()));
 
@@ -25,8 +28,10 @@ async function scrollToBottom() {
   if (el) el.scrollTop = el.scrollHeight;
 }
 
-// 有新日志时自动滚到底部
-watch(() => lines.value.length, scrollToBottom);
+// 展开时滚到底部；展开后有新日志也自动滚到底
+watch([show, () => lines.value.length], () => {
+  if (show.value) void scrollToBottom();
+});
 
 /** 长按/按钮 → 确认框「清除log?」 */
 async function clearLog() {
@@ -61,13 +66,34 @@ onBeforeUnmount(pressStop);
 </script>
 
 <template>
-  <!-- 高 66px 的可滚动日志区；
-       长按可弹菜单清 log，另给一个清除按钮（Vant 图标） -->
-  <div class="flex items-start border-t border-black/10 bg-white">
+  <div class="border-t border-black/10 bg-white">
+    <!-- 折叠条：日志内容默认隐藏 -->
+    <div class="flex items-center justify-between px-2 py-1">
+      <button
+        type="button"
+        data-testid="m1-log-toggle"
+        class="flex items-center gap-1 text-xs text-gray-500"
+        @click="show = !show"
+      >
+        <van-icon :name="show ? 'arrow-down' : 'arrow-up'" size="12" />
+        日志
+      </button>
+      <van-icon
+        v-if="show"
+        data-testid="m1-log-clear"
+        name="delete-o"
+        size="16"
+        class="text-gray-400"
+        @click="clearLog"
+      />
+    </div>
+
+    <!-- 展开后的日志内容；长按可弹菜单清 log -->
     <div
+      v-if="show"
       ref="scroller"
       data-testid="m1-log"
-      class="h-[66px] flex-1 overflow-y-auto px-2 py-1 font-mono text-[13px] leading-[15px] text-gray-800"
+      class="h-[66px] overflow-y-auto px-2 pb-1 font-mono text-[13px] leading-[15px] text-gray-800"
       @pointerdown="pressStart"
       @pointerup="pressStop"
       @pointerleave="pressStop"
@@ -77,12 +103,5 @@ onBeforeUnmount(pressStop);
       <div data-testid="m1-log-header" class="whitespace-pre-wrap break-all">{{ headerText }}</div>
       <div v-for="(l, i) in lines" :key="i" class="whitespace-pre-wrap break-all">{{ stamp(l.ts) }}{{ l.text }}</div>
     </div>
-    <van-icon
-      data-testid="m1-log-clear"
-      name="delete-o"
-      size="16"
-      class="m-1 shrink-0 text-gray-400"
-      @click="clearLog"
-    />
   </div>
 </template>
