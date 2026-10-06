@@ -93,10 +93,19 @@ test.describe('全栈联调（真后端 + 本机 broker + 假设备）', () => {
   test('主界面显示假设备的实时数据（不是占位符）', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.van-nav-bar__title')).toBeVisible();
-    // 等真实数值上来：假设备每 interval 秒上报一次
-    await expect
-      .poll(async () => page.locator('text=/^\\d+(\\.\\d+)?$/').count(), { timeout: 20_000 })
-      .toBeGreaterThan(0);
+
+    // 四个数值区逐个脱离占位符：假设备每 interval 秒上报一次。
+    // 不能只等「页面上出现任意数字」——亮度/设备名也算数字，会让后面的「无占位符」断言偶发失败。
+    const realValues: [string, RegExp][] = [
+      ['m1-pm25', /^\d+$/],
+      ['m1-formaldehyde', /^\d+(\.\d+)?$/],
+      ['m1-temperature', /^\d+(\.\d+)?℃$/],
+      ['m1-humidity', /^\d+(\.\d+)?%$/],
+    ];
+    for (const [id, pattern] of realValues) {
+      await expect(page.getByTestId(id)).toHaveText(pattern, { timeout: 20_000 });
+    }
+
     const text = (await page.locator('body').innerText()).replaceAll(/\s+/g, ' ');
     expect(text).toContain('PM2.5');
     expect(text).toContain('甲醛');
