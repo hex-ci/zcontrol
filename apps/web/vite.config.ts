@@ -26,7 +26,7 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
-    port: 5273,
+    port: 5173,
     proxy: {
       '/api': { target: SERVER, changeOrigin: true },
       '/ws': { target: SERVER.replace('http', 'ws'), ws: true },

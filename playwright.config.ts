@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * e2e 配置：默认跑本机开发环境（web 5273 / server 8090）。
+ * e2e 配置：默认跑本机开发环境（web 5173 / server 8090）。
  * BASE_URL 可覆盖，例如 BASE_URL=http://zcontrol.n1 pnpm test:e2e
  */
 export default defineConfig({
@@ -14,7 +14,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   reporter: [['list']],
   use: {
-    baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:5273',
+    baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

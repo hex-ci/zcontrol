@@ -52,7 +52,7 @@
 ```bash
 pnpm install
 
-# 开发：后端 :8090，前端 :5273（Vite 代理 /api 与 /ws）
+# 开发：后端 :8090，前端 :5173（Vite 代理 /api 与 /ws）
 pnpm dev
 
 # 分开启动

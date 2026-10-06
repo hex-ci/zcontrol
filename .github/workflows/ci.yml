@@ -46,12 +46,12 @@ jobs:
 
       # 只跑使用 mock 接口的单页用例：不依赖真实设备、不发 UDP 广播
       - name: 启动前端开发服务器
-        run: pnpm --filter @zcontrol/web exec vite --host 127.0.0.1 --port 5273 &
+        run: pnpm --filter @zcontrol/web exec vite --host 127.0.0.1 --port 5173 &
 
       - name: 等待前端就绪
         run: |
           for i in $(seq 1 60); do
-            if curl -sf http://127.0.0.1:5273/ >/dev/null; then
+            if curl -sf http://127.0.0.1:5173/ >/dev/null; then
               echo "前端已就绪"; exit 0
             fi
             sleep 1
