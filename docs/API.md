@@ -1,4 +1,4 @@
-# zControl Web · 接口契约（冻结）
+# zControl Web · 接口契约
 
 > 前端与后端之间的唯一约定。改这里必须同步 `apps/server/src` 与 `apps/web/src/api.ts`。
 > 设备只支持 **zM1（type=4）**。
