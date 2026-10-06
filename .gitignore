@@ -21,5 +21,4 @@ docs/_internal/
 # 编辑器/系统
 .DS_Store
 .idea/
-.vscode/
 *.log
