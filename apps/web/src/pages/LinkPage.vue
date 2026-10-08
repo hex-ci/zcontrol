@@ -2,10 +2,10 @@
 /**
  * 配对说明页（纯静态说明文案）。
  */
-import { useRouter } from 'vue-router';
-import AppNavBar from '../components/AppNavBar.vue';
+import { useRouter } from 'vue-router'
+import AppNavBar from '../components/AppNavBar.vue'
 
-const router = useRouter();
+const router = useRouter()
 
 /** 配网步骤 */
 const steps = [
@@ -13,10 +13,10 @@ const steps = [
   '2. 手机连接设备热点 zM1_XXXX,打开网址: 192.168.0.1,输入 WIFI 名称(必须为 2.4G)及密码点击下一步,提示配置成功.',
   '3. 在路由器管理中确认设备连上 WIFI,名称为 zM1_XXXX.',
   '4. 搜寻局域网设备添加设备至本工具.',
-];
+]
 
 function back() {
-  router.back();
+  router.back()
 }
 </script>
 

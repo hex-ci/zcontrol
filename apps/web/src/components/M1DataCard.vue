@@ -6,47 +6,47 @@
  *   亮度滑块（0..4）
  *   「亮度定时」入口（带 chevron）
  */
-import { computed, ref, watch } from 'vue';
-import type { M1State } from '../api';
-import SensorValue from './SensorValue.vue';
+import { computed, ref, watch } from 'vue'
+import type { M1State } from '../api'
+import SensorValue from './SensorValue.vue'
 
-const props = defineProps<{ state: M1State }>();
-const emit = defineEmits<{ brightnessEnd: [number]; brightnessTask: [] }>();
+const props = defineProps<{ state: M1State }>()
+const emit = defineEmits<{ brightnessEnd: [number], brightnessTask: [] }>()
 
 /** 亮度 0..4，未收到数据前保持初始进度 0 */
-const brightness = ref(0);
+const brightness = ref(0)
 watch(
   () => props.state.brightness,
   (v) => {
-    if (typeof v === 'number' && v >= 0 && v <= 4) brightness.value = v;
+    if (typeof v === 'number' && v >= 0 && v <= 4) brightness.value = v
   },
   { immediate: true },
-);
+)
 
 /**
  * 数值格式化：主值保留一位小数（int t = value * 10，再按 t/10 与 t%10 拼接）：
  * 未收到数据时调用方给 undefined → 占位 "--.-"。
  */
 function decimal(value: number | undefined, suffix: string): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return `--.-${suffix}`;
-  const t = Math.trunc(value * 10); // 取整到 0.1
-  return `${Math.trunc(t / 10)}.${t % 10}${suffix}`;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return `--.-${suffix}`
+  const t = Math.trunc(value * 10) // 取整到 0.1
+  return `${Math.trunc(t / 10)}.${t % 10}${suffix}`
 }
 
 /** PM25：直接字符串化，占位 "---" */
 const pm25 = computed(() =>
   typeof props.state.PM25 === 'number' ? String(props.state.PM25) : '---',
-);
+)
 /** 甲醛：直接字符串化，占位 "-.--" */
 const formaldehyde = computed(() =>
   typeof props.state.formaldehyde === 'number' ? String(props.state.formaldehyde) : '-.--',
-);
-const temperature = computed(() => decimal(props.state.temperature, '℃'));
-const humidity = computed(() => decimal(props.state.humidity, '%'));
+)
+const temperature = computed(() => decimal(props.state.temperature, '℃'))
+const humidity = computed(() => decimal(props.state.humidity, '%'))
 
 /** 拖动结束下发亮度（Vant Slider 在交互结束时 emit change） */
 function onBrightnessChange(value: number | number[]) {
-  if (typeof value === 'number') emit('brightnessEnd', value);
+  if (typeof value === 'number') emit('brightnessEnd', value)
 }
 </script>
 
@@ -75,7 +75,7 @@ function onBrightnessChange(value: number | number[]) {
          旋钮直径 20px，值为 0 时会超出轨道左端 10px，所以滑块两侧留出边距，避免压到「亮度」二字 -->
     <div class="mt-5 flex items-center gap-2">
       <span class="shrink-0 text-[13px]">亮度</span>
-      <van-slider
+      <VanSlider
         v-model="brightness"
         class="mx-3.5 flex-1"
         :min="0"
@@ -92,7 +92,7 @@ function onBrightnessChange(value: number | number[]) {
       @click="emit('brightnessTask')"
     >
       <span>亮度定时</span>
-      <van-icon name="arrow" size="16" />
+      <VanIcon name="arrow" size="16" />
     </div>
   </div>
 </template>

@@ -17,12 +17,15 @@ zControl Web is a console for the Phicomm zM1 (斐讯悟空 M1) air detector: a 
 - E2E, mocked single-page suite (needs the **Vite dev server already running** on :5173):
   `pnpm exec playwright test apps/web/tests/e2e/pages`
 - E2E, everything: `pnpm test:e2e` (Playwright, Pixel 7 viewport, baseURL `127.0.0.1:5173`; override with `BASE_URL=...`)
-- CI (`.github/workflows/ci.yml`) runs, in order: `pnpm install --frozen-lockfile` → server `test` → web `build` → starts Vite on :5173 → `pnpm exec playwright test apps/web/tests/e2e/pages`.
-- There is **no lint or typecheck script**. `tsc --noEmit` is configured in `apps/server/tsconfig.json` but not wired to any npm script.
+- Typecheck: `pnpm run typecheck` (`pnpm -r typecheck`; server `tsc --noEmit`, web `vue-tsc --build` over project references `tsconfig.app/node/e2e.json`)
+- Lint: `pnpm run lint` (ESLint flat config `eslint.config.ts`, `--max-warnings 0`) · autofix: `pnpm run lint:fix` · run both: `pnpm run code-check`
+- CI (`.github/workflows/ci.yml`), job `build-and-test`: `pnpm install --frozen-lockfile` → `pnpm run typecheck` → `pnpm run lint` → server `test` → web `build`; then job `e2e` starts Vite on :5173 and runs `pnpm exec playwright test apps/web/tests/e2e/pages`.
 
 ## Conventions
 
 - Comments, log messages, and UI copy are **Chinese**; keep new ones consistent.
+- Formatting is enforced by ESLint (`@stylistic`): **no semicolons**, single quotes, 2-space indent, PascalCase component tags in templates (`<VanCell>`, `<RouterView>`). Run `pnpm run lint:fix` after editing.
+- `.then()` chaining is banned (`no-restricted-syntax`) — use async/await.
 - Commit messages are Conventional Commits in Chinese, e.g. `feat: 云同步回包确认…`, `fix(web): 修正标题文本中的空格`, `chore:`, `docs(api):`, `test:`, `style(web):`.
 - Backend source layout: `src/{api,core,device,transport,store,ws}`. ESM only, `strict` + `verbatimModuleSyntax`; **import local files with the `.ts` extension** (`import { PORT } from './config.ts'`) and use `import type` for types. `erasableSyntaxOnly` is on — no TS enums/namespaces/parameter-properties (type stripping must work).
 - Backend assembly is centralized in `createApp()` (`src/app.ts`), shared by `src/index.ts` and tests. Config/env constants live in `src/config.ts`.
@@ -36,5 +39,6 @@ zControl Web is a console for the Phicomm zM1 (斐讯悟空 M1) air detector: a 
 - Ports/services in play: backend **8090**, Vite **5173**, device UDP **10181/10182**, MQTT default **1883**. Tests must not bind 10181 (hence `startTransports: false`); UDP ports are not silently shared.
 - `pnpm test:e2e` also runs `fullstack.spec.ts`, which needs a real backend on :8090, Vite on :5173, and a local mosquitto on :1883 — otherwise it **skips** (not fails). CI only runs the `pages/` subset, which mocks all `/api/**` routes and the WebSocket.
 - E2E page specs write screenshots into `docs/screenshots/` (e.g. `10-m1-page.png`); a run can overwrite committed docs assets.
+- E2E assertions match **exact UI copy** — Chinese text *and* its CJK/Latin spacing (e.g. `接收 mqtt:`, `设备 MQTT 服务器`, `已发送 MQTT 配置到 "xx"`). Any copy change breaks the affected `apps/web/tests/e2e/pages/*.spec.ts`; grep the new string and update the spec.
 - The backend must never proactively send set-messages: only explicit UI actions (slider drag, confirm, OTA, reboot…) emit downstream packets, and every one passes the device-command whitelist (`apps/server/src/device/`) — unknown fields return 400. zM1 timer slot `task_4` (5th group) is reserved by the countdown feature.
 - `docs/PROTOCOL.md` (zM1 wire protocol) and `docs/API.md` (REST/WS contract) are the source of truth for payload shapes; keep them in sync when changing interfaces.

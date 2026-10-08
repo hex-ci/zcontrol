@@ -7,31 +7,31 @@
  *   之后每行 `[HH:mm:ss.sss]内容`（stamp + text）。
  * 长按日志内容弹「清除log?」确认框；展开时右上角另有清除按钮。
  */
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { showConfirmDialog } from 'vant';
-import { header, stamp, useLogStore } from '../stores/log';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { showConfirmDialog } from 'vant'
+import { header, stamp, useLogStore } from '../stores/log'
 
-const props = defineProps<{ mac: string }>();
+const props = defineProps<{ mac: string }>()
 
-const log = useLogStore();
-const scroller = ref<HTMLElement | null>(null);
+const log = useLogStore()
+const scroller = ref<HTMLElement | null>(null)
 
 /** 日志栏默认隐藏，点击折叠条才展开 */
-const show = ref(false);
+const show = ref(false)
 
-const lines = computed(() => log.lines(props.mac));
-const headerText = computed(() => header(log.headerAt[props.mac] ?? Date.now()));
+const lines = computed(() => log.lines(props.mac))
+const headerText = computed(() => header(log.headerAt[props.mac] ?? Date.now()))
 
 async function scrollToBottom() {
-  await nextTick();
-  const el = scroller.value;
-  if (el) el.scrollTop = el.scrollHeight;
+  await nextTick()
+  const el = scroller.value
+  if (el) el.scrollTop = el.scrollHeight
 }
 
 // 展开时滚到底部；展开后有新日志也自动滚到底
 watch([show, () => lines.value.length], () => {
-  if (show.value) void scrollToBottom();
-});
+  if (show.value) void scrollToBottom()
+})
 
 /** 长按/按钮 → 确认框「清除log?」 */
 async function clearLog() {
@@ -40,29 +40,30 @@ async function clearLog() {
       title: '清除log?',
       confirmButtonText: '确认',
       cancelButtonText: '取消',
-    });
-    log.clear(props.mac);
-  } catch {
+    })
+    log.clear(props.mac)
+  }
+  catch {
     // 点了取消
   }
 }
 
 // 长按（pointer 事件在移动端等价长按，桌面端等价按住）
-let pressTimer: number | undefined;
+let pressTimer: number | undefined
 function pressStart() {
-  pressStop();
+  pressStop()
   pressTimer = window.setTimeout(() => {
-    pressTimer = undefined;
-    void clearLog();
-  }, 600);
+    pressTimer = undefined
+    void clearLog()
+  }, 600)
 }
 function pressStop() {
   if (pressTimer !== undefined) {
-    window.clearTimeout(pressTimer);
-    pressTimer = undefined;
+    window.clearTimeout(pressTimer)
+    pressTimer = undefined
   }
 }
-onBeforeUnmount(pressStop);
+onBeforeUnmount(pressStop)
 </script>
 
 <template>
@@ -75,10 +76,10 @@ onBeforeUnmount(pressStop);
         class="flex items-center gap-1 text-xs text-gray-500"
         @click="show = !show"
       >
-        <van-icon :name="show ? 'arrow-down' : 'arrow-up'" size="12" />
+        <VanIcon :name="show ? 'arrow-down' : 'arrow-up'" size="12" />
         日志
       </button>
-      <van-icon
+      <VanIcon
         v-if="show"
         data-testid="m1-log-clear"
         name="delete-o"

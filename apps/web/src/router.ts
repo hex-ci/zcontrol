@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const routes = [
   { path: '/', name: 'main', component: () => import('./pages/MainShell.vue') },
@@ -22,9 +22,9 @@ const routes = [
   { path: '/sort', name: 'sort', component: () => import('./pages/SortPage.vue') },
   { path: '/about', name: 'about', component: () => import('./pages/AboutPage.vue') },
   { path: '/:pathMatch(.*)*', redirect: '/' },
-];
+]
 
 export const router = createRouter({
   history: createWebHashHistory(),
   routes,
-});
+})

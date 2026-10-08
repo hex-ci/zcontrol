@@ -20,19 +20,19 @@
 
 /** YAML 双引号标量转义（mac/名称来自设备表，理论上不会有引号，仍然转义） */
 function q(v: string): string {
-  return `"${v.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+  return `"${v.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
 }
 
 interface SensorSpec {
   /** 实体后缀：name / unique_id 用 `zm1_<mac>_<id>` */
-  id: string;
+  id: string
   /** 中文标签（只出现在注释里） */
-  label: string;
-  deviceClass: string;
-  unit: string;
-  icon: string;
+  label: string
+  deviceClass: string
+  unit: string
+  icon: string
   /** 状态模板（对上报值做数值容错） */
-  value: string;
+  value: string
 }
 
 /** zM1 sensor topic 上的四个数值（见 docs/PROTOCOL.md §4） */
@@ -71,17 +71,17 @@ const SENSORS: SensorSpec[] = [
     icon: 'mdi:chemical-weapon',
     value: 'value_json.formaldehyde | float(0)',
   },
-];
+]
 
 /** 生成一份可直接粘贴的 `mqtt:` YAML 片段 */
-export function buildHaConfig(params: { mac: string; name: string }): string {
-  const mac = params.mac.toLowerCase();
-  const name = params.name.trim() || `zM1_${mac.slice(-4)}`;
-  const sensorTopic = `device/zm1/${mac}/sensor`;
-  const stateTopic = `device/zm1/${mac}/state`;
-  const availabilityTopic = `device/zm1/${mac}/availability`;
+export function buildHaConfig(params: { mac: string, name: string }): string {
+  const mac = params.mac.toLowerCase()
+  const name = params.name.trim() || `zM1_${mac.slice(-4)}`
+  const sensorTopic = `device/zm1/${mac}/sensor`
+  const stateTopic = `device/zm1/${mac}/state`
+  const availabilityTopic = `device/zm1/${mac}/availability`
   /** 实体名/unique_id（= HA entity_id 的来源，必须与旧模板一致） */
-  const eid = (id: string): string => `zm1_${mac}_${id}`;
+  const eid = (id: string): string => `zm1_${mac}_${id}`
 
   /** 每个实体都挂同一个 device，HA 里会归到一台设备下（不影响 entity_id） */
   const device = [
@@ -91,9 +91,9 @@ export function buildHaConfig(params: { mac: string; name: string }): string {
     `        name: ${q(name)}`,
     '        manufacturer: "Phicomm"',
     '        model: "zM1 空气检测仪"',
-  ].join('\n');
+  ].join('\n')
 
-  const sensors = SENSORS.map((s) =>
+  const sensors = SENSORS.map(s =>
     [
       `    # ${s.label}`,
       `    - name: ${eid(s.id)}`,
@@ -109,7 +109,7 @@ export function buildHaConfig(params: { mac: string; name: string }): string {
       `      value_template: ${q(`{{ ${s.value} }}`)}`,
       device,
     ].join('\n'),
-  ).join('\n');
+  ).join('\n')
 
   return [
     '# zM1 空气检测仪 · Home Assistant MQTT 配置',
@@ -140,15 +140,15 @@ export function buildHaConfig(params: { mac: string; name: string }): string {
     '      command_off_template: >-',
     `        {"mac": ${q(mac)}, "brightness": 0}`,
     '      state_template: >-',
-    "        {{ 'off' if value_json.brightness == 0 else 'on' }}",
+    '        {{ \'off\' if value_json.brightness == 0 else \'on\' }}',
     '      brightness_template: >-',
     '        {{ [value_json.brightness | int(0) * 64, 255] | min }}',
     device,
     '',
-  ].join('\n');
+  ].join('\n')
 }
 
 /** 下载用的文件名（照抄 PC 端 `zm1_<mac>.yaml` 的习惯） */
 export function haConfigFileName(mac: string): string {
-  return `zm1_${mac.toLowerCase()}_ha.yaml`;
+  return `zm1_${mac.toLowerCase()}_ha.yaml`
 }

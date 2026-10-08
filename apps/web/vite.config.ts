@@ -1,11 +1,11 @@
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import tailwindcss from '@tailwindcss/vite';
-import Components from 'unplugin-vue-components/vite';
-import AutoImport from 'unplugin-auto-import/vite';
-import { VantResolver } from '@vant/auto-import-resolver';
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import tailwindcss from '@tailwindcss/vite'
+import Components from 'unplugin-vue-components/vite'
+import AutoImport from 'unplugin-auto-import/vite'
+import { VantResolver } from '@vant/auto-import-resolver'
 
-const SERVER = 'http://127.0.0.1:8090';
+const SERVER = 'http://127.0.0.1:8090'
 
 export default defineConfig({
   plugins: [
@@ -36,4 +36,4 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-});
+})

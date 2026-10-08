@@ -7,53 +7,53 @@
  *   + 列表底部「增加设备」按钮
  *   + 底部两按钮：设置 / 关于
  */
-import { computed, ref } from 'vue';
-import { showConfirmDialog } from 'vant';
-import { useDeviceStore } from '../stores/devices';
+import { computed, ref } from 'vue'
+import { showConfirmDialog } from 'vant'
+import { useDeviceStore } from '../stores/devices'
 
-defineProps<{ activeMac: string }>();
+defineProps<{ activeMac: string }>()
 
 const emit = defineEmits<{
-  pick: [mac: string];
-  add: [];
-  settings: [];
-  about: [];
-  sort: [];
-  remove: [mac: string];
-}>();
+  pick: [mac: string]
+  add: []
+  settings: []
+  about: []
+  sort: []
+  remove: [mac: string]
+}>()
 
-const device = useDeviceStore();
-const devices = computed(() => device.devices);
+const device = useDeviceStore()
+const devices = computed(() => device.devices)
 
-const PROJECT_URL = 'https://github.com/hex-ci/zcontrol';
+const PROJECT_URL = 'https://github.com/hex-ci/zcontrol'
 
 function openProject() {
-  window.open(PROJECT_URL, '_blank');
+  window.open(PROJECT_URL, '_blank')
 }
 
 // region 长按删除设备
-let pressTimer: number | null = null;
-const suppressClick = ref(false);
+let pressTimer: number | null = null
+const suppressClick = ref(false)
 
 function cancelPress() {
   if (pressTimer !== null) {
-    window.clearTimeout(pressTimer);
-    pressTimer = null;
+    window.clearTimeout(pressTimer)
+    pressTimer = null
   }
 }
 
 function startPress(mac: string, name: string) {
-  cancelPress();
-  suppressClick.value = false;
+  cancelPress()
+  suppressClick.value = false
   pressTimer = window.setTimeout(() => {
-    pressTimer = null;
-    suppressClick.value = true;
-    void askRemove(mac, name);
-  }, 600);
+    pressTimer = null
+    suppressClick.value = true
+    void askRemove(mac, name)
+  }, 600)
 }
 
 function endPress() {
-  cancelPress();
+  cancelPress()
 }
 
 async function askRemove(mac: string, name: string) {
@@ -63,9 +63,10 @@ async function askRemove(mac: string, name: string) {
       message: '注意:重新配网设备无需删除设备',
       confirmButtonText: '删除设备',
       cancelButtonText: '取消',
-    });
-    emit('remove', mac);
-  } catch {
+    })
+    emit('remove', mac)
+  }
+  catch {
     /* 用户取消 */
   }
 }
@@ -73,10 +74,10 @@ async function askRemove(mac: string, name: string) {
 
 function pick(mac: string) {
   if (suppressClick.value) {
-    suppressClick.value = false;
-    return;
+    suppressClick.value = false
+    return
   }
-  emit('pick', mac);
+  emit('pick', mac)
 }
 </script>
 
@@ -126,7 +127,7 @@ function pick(mac: string) {
           :class="d.mac === activeMac ? 'bg-[#3F51B5] text-white' : 'bg-gray-200 text-gray-500'"
         >
           <!-- zM1 空气检测仪占位图标 -->
-          <van-icon name="chart-trending-o" size="18" />
+          <VanIcon name="chart-trending-o" size="18" />
         </span>
         <span
           class="truncate text-sm"

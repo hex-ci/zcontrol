@@ -3,94 +3,100 @@
  * 设备排序页（提示「长按拖动排序」+ 列表项）。
  * 拖动用 sortablejs；同时提供上/下移按钮。保存时 PUT /devices/order。
  */
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { showSuccessToast, showToast } from 'vant';
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { showSuccessToast, showToast } from 'vant'
 // sortablejs 未随包提供 TS 类型
-// @ts-ignore
-import Sortable from 'sortablejs';
-import AppNavBar from '../components/AppNavBar.vue';
-import type { DeviceDTO } from '../api';
-import { useDeviceStore } from '../stores/devices';
+// @ts-expect-error sortablejs 无类型声明
+import Sortable from 'sortablejs'
+import AppNavBar from '../components/AppNavBar.vue'
+import type { DeviceDTO } from '../api'
+import { useDeviceStore } from '../stores/devices'
 
-const router = useRouter();
-const device = useDeviceStore();
+const router = useRouter()
+const device = useDeviceStore()
 
-const list = ref<DeviceDTO[]>([]);
-const listEl = ref<HTMLElement | null>(null);
-const saving = ref(false);
-const dirty = ref(false);
-let sortable: Sortable | null = null;
+const list = ref<DeviceDTO[]>([])
+const listEl = ref<HTMLElement | null>(null)
+const saving = ref(false)
+const dirty = ref(false)
+let sortable: Sortable | null = null
 
 /** 设备列表就绪前保持与 store 同步；用户拖动/移动后不再覆盖 */
 watch(
   () => device.devices,
   (d) => {
-    if (!dirty.value) list.value = [...d];
+    if (!dirty.value) list.value = [...d]
   },
   { immediate: true, deep: true },
-);
+)
 
 onMounted(async () => {
   if (!device.devices.length) {
     try {
-      await device.load();
-    } catch {
+      await device.load()
+    }
+    catch {
       /* 后端不可用时忽略 */
     }
   }
-  list.value = [...device.devices];
+  list.value = [...device.devices]
 
-  await nextTick();
+  await nextTick()
   if (listEl.value) {
     sortable = Sortable.create(listEl.value, {
       animation: 150,
       handle: '.sort-handle',
-      onEnd: (evt) => {
-        const from = evt.oldIndex;
-        const to = evt.newIndex;
-        if (from == null || to == null || from === to) return;
-        const arr = list.value.slice();
-        const [moved] = arr.splice(from, 1);
-        arr.splice(to, 0, moved);
-        list.value = arr;
-        dirty.value = true;
+      onEnd: (evt: { oldIndex?: number, newIndex?: number }) => {
+        const from = evt.oldIndex
+        const to = evt.newIndex
+        if (from == null || to == null || from === to) return
+        const arr = list.value.slice()
+        const moved = arr.splice(from, 1)[0]
+        if (!moved) return
+        arr.splice(to, 0, moved)
+        list.value = arr
+        dirty.value = true
       },
-    });
+    })
   }
-});
+})
 
 onBeforeUnmount(() => {
-  sortable?.destroy();
-  sortable = null;
-});
+  sortable?.destroy()
+  sortable = null
+})
 
 function move(index: number, dir: -1 | 1) {
-  const j = index + dir;
-  if (j < 0 || j >= list.value.length) return;
-  const arr = list.value.slice();
-  const tmp = arr[index];
-  arr[index] = arr[j];
-  arr[j] = tmp;
-  list.value = arr;
-  dirty.value = true;
+  const j = index + dir
+  if (j < 0 || j >= list.value.length) return
+  const arr = list.value.slice()
+  const a = arr[index]
+  const b = arr[j]
+  if (a === undefined || b === undefined) return
+  arr[index] = b
+  arr[j] = a
+  list.value = arr
+  dirty.value = true
 }
 
 async function save() {
-  saving.value = true;
+  saving.value = true
   try {
-    await device.reorder(list.value.map((d) => d.mac));
-    showSuccessToast('保存成功');
-    router.push('/');
-  } catch (e) {
-    showToast(String((e as Error).message));
-  } finally {
-    saving.value = false;
+    await device.reorder(list.value.map(d => d.mac))
+    showSuccessToast('保存成功')
+    router.push('/')
+  }
+  catch (e) {
+    showToast(String((e as Error).message))
+  }
+  finally {
+    saving.value = false
   }
 }
 
 function back() {
-  router.back();
+  router.back()
 }
 </script>
 
@@ -120,7 +126,7 @@ function back() {
           :data-testid="`sort-up-${d.mac}`"
           @click="move(i, -1)"
         >
-          <van-icon name="arrow-up" />
+          <VanIcon name="arrow-up" />
         </button>
         <button
           class="px-2 text-gray-500 disabled:text-gray-200"
@@ -128,7 +134,7 @@ function back() {
           :data-testid="`sort-down-${d.mac}`"
           @click="move(i, 1)"
         >
-          <van-icon name="arrow-down" />
+          <VanIcon name="arrow-down" />
         </button>
       </div>
 
@@ -136,9 +142,9 @@ function back() {
     </div>
 
     <div class="p-4">
-      <van-button block type="primary" color="#3F51B5" :loading="saving" data-testid="sort-save" @click="save">
+      <VanButton block type="primary" color="#3F51B5" :loading="saving" data-testid="sort-save" @click="save">
         保存
-      </van-button>
+      </VanButton>
     </div>
   </div>
 </template>

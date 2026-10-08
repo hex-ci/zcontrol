@@ -3,29 +3,29 @@
  * Home Assistant 配置弹窗：展示生成的 YAML（只读），可复制或下载成 .yaml 文件。
  * 纯文本生成——不会向设备或 HA 发送任何数据。
  */
-import { showToast } from 'vant';
-import { copyText } from '../composables/clipboard';
+import { showToast } from 'vant'
+import { copyText } from '../composables/clipboard'
 
-const props = defineProps<{ show: boolean; yaml: string; fileName: string }>();
-const emit = defineEmits<{ 'update:show': [boolean] }>();
+const props = defineProps<{ show: boolean, yaml: string, fileName: string }>()
+const emit = defineEmits<{ 'update:show': [boolean] }>()
 
 async function onCopy(): Promise<void> {
-  showToast((await copyText(props.yaml)) ? '已复制HA配置' : '复制失败,请长按选择文本');
+  showToast((await copyText(props.yaml)) ? '已复制HA配置' : '复制失败,请长按选择文本')
 }
 
 function onDownload(): void {
-  const blob = new Blob([props.yaml], { type: 'text/yaml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = props.fileName || 'zcontrol-ha.yaml';
-  a.click();
-  URL.revokeObjectURL(url);
+  const blob = new Blob([props.yaml], { type: 'text/yaml;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = props.fileName || 'zcontrol-ha.yaml'
+  a.click()
+  URL.revokeObjectURL(url)
 }
 </script>
 
 <template>
-  <van-popup
+  <VanPopup
     :show="show"
     round
     position="bottom"
@@ -43,14 +43,14 @@ function onDownload(): void {
       <pre
         data-testid="ha-yaml"
         class="w-max min-w-full rounded bg-gray-100 p-3 text-[11px] leading-4 whitespace-pre text-gray-800"
-        >{{ yaml }}</pre
+      >{{ yaml }}</pre
       >
     </div>
     <div class="flex shrink-0 gap-3 p-4">
-      <van-button block plain type="primary" data-testid="ha-copy" @click="onCopy">复制</van-button>
-      <van-button block type="primary" data-testid="ha-download" @click="onDownload">
+      <VanButton block plain type="primary" data-testid="ha-copy" @click="onCopy">复制</VanButton>
+      <VanButton block type="primary" data-testid="ha-download" @click="onDownload">
         下载 .yaml
-      </van-button>
+      </VanButton>
     </div>
-  </van-popup>
+  </VanPopup>
 </template>

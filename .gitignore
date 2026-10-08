@@ -22,3 +22,5 @@ docs/_internal/
 .DS_Store
 .idea/
 *.log
+
+.eslintcache

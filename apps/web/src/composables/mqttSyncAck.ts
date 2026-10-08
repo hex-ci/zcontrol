@@ -1,5 +1,5 @@
-import { showToast } from 'vant';
-import { useDeviceStore } from '../stores/devices';
+import { showToast } from 'vant'
+import { useDeviceStore } from '../stores/devices'
 
 /**
  * 云同步确认：设备收到 MQTT 配置后会回一条带 `setting` 的报文
@@ -14,55 +14,55 @@ import { useDeviceStore } from '../stores/devices';
  */
 
 export interface MqttSyncAck {
-  mac: string;
-  mqtt_uri: string;
-  mqtt_port: number;
-  mqtt_user: string;
+  mac: string
+  mqtt_uri: string
+  mqtt_port: number
+  mqtt_user: string
 }
 
-type AckHandler = (ack: MqttSyncAck) => void;
+type AckHandler = (ack: MqttSyncAck) => void
 
-const handlers = new Set<AckHandler>();
-const toasted = new Map<string, string>();
+const handlers = new Set<AckHandler>()
+const toasted = new Map<string, string>()
 
 /** 订阅「设备回报了 MQTT 配置」事件；返回取消订阅函数 */
 export function onMqttSyncAck(handler: AckHandler): () => void {
-  handlers.add(handler);
-  return () => handlers.delete(handler);
+  handlers.add(handler)
+  return () => handlers.delete(handler)
 }
 
 /** 解析设备回包里的 MQTT 配置；不是配置回包时返回 null */
 export function parseMqttSyncAck(mac: string, payload: unknown): MqttSyncAck | null {
-  if (typeof payload !== 'object' || payload === null) return null;
-  const setting = (payload as { setting?: unknown }).setting;
-  if (typeof setting !== 'object' || setting === null) return null;
+  if (typeof payload !== 'object' || payload === null) return null
+  const setting = (payload as { setting?: unknown }).setting
+  if (typeof setting !== 'object' || setting === null) return null
 
-  const s = setting as { mqtt_uri?: unknown; mqtt_port?: unknown; mqtt_user?: unknown };
+  const s = setting as { mqtt_uri?: unknown, mqtt_port?: unknown, mqtt_user?: unknown }
   // 只有带 mqtt_uri 的 setting 才是 MQTT 配置回包（下发名称/OTA 时 device 也可能回 setting）
-  if (typeof s.mqtt_uri !== 'string') return null;
+  if (typeof s.mqtt_uri !== 'string') return null
 
   return {
     mac,
     mqtt_uri: s.mqtt_uri,
     mqtt_port: typeof s.mqtt_port === 'number' ? s.mqtt_port : 0,
     mqtt_user: typeof s.mqtt_user === 'string' ? s.mqtt_user : '',
-  };
+  }
 }
 
 export function notifyMqttSyncAck(mac: string, payload: unknown): void {
-  const ack = parseMqttSyncAck(mac, payload);
-  if (!ack) return;
+  const ack = parseMqttSyncAck(mac, payload)
+  if (!ack) return
 
   // 先通知等待方（云同步的重发判断），再决定要不要弹 toast
-  for (const handler of [...handlers]) handler(ack);
+  for (const handler of [...handlers]) handler(ack)
 
-  const key = `${ack.mqtt_uri}:${ack.mqtt_port}/${ack.mqtt_user}`;
-  if (toasted.get(mac) === key) return;
-  toasted.set(mac, key);
+  const key = `${ack.mqtt_uri}:${ack.mqtt_port}/${ack.mqtt_user}`
+  if (toasted.get(mac) === key) return
+  toasted.set(mac, key)
 
-  const name = useDeviceStore().byMac(mac)?.name ?? mac;
+  const name = useDeviceStore().byMac(mac)?.name ?? mac
   showToast({
     message: `已设置 "${name}" MQTT 服务器:\n${ack.mqtt_uri}:${ack.mqtt_port}\n${ack.mqtt_user}`,
     duration: 5000,
-  });
+  })
 }

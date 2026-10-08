@@ -4,12 +4,12 @@
  * 「正在更新固件,请勿断开设备电源! ... 此窗口可直接取消,不影响更新」。
  * 进行中显示「正在获取最新固件版本,请稍后....\n进度:N%」。
  */
-defineProps<{ show: boolean; progress: number }>();
-const emit = defineEmits<{ 'update:show': [boolean] }>();
+defineProps<{ show: boolean, progress: number }>()
+const emit = defineEmits<{ 'update:show': [boolean] }>()
 </script>
 
 <template>
-  <van-popup
+  <VanPopup
     :show="show"
     round
     :close-on-click-overlay="false"
@@ -20,7 +20,7 @@ const emit = defineEmits<{ 'update:show': [boolean] }>();
       {{ '正在获取最新固件版本,请稍后....\n' + '进度: ' + progress + '%' }}
     </div>
     <div class="border-t border-gray-100">
-      <van-button
+      <VanButton
         block
         plain
         type="primary"
@@ -28,7 +28,7 @@ const emit = defineEmits<{ 'update:show': [boolean] }>();
         @click="emit('update:show', false)"
       >
         取消
-      </van-button>
+      </VanButton>
     </div>
-  </van-popup>
+  </VanPopup>
 </template>

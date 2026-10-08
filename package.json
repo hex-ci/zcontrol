@@ -2,6 +2,7 @@
   "name": "zcontrol",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "zM1 空气检测仪（斐讯悟空 M1）的 Web 控制台：Node.js 后端 + Vue 前端",
   "license": "MIT",
   "author": "Hex <https://github.com/hex-ci>",
@@ -31,10 +32,23 @@
     "build": "pnpm --filter @zcontrol/web build",
     "start": "pnpm --filter @zcontrol/server start",
     "test": "pnpm --filter @zcontrol/server test",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint . --cache --max-warnings 0",
+    "lint:fix": "eslint . --cache --max-warnings 0 --fix",
+    "code-check": "run-p typecheck lint"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0"
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "@tsconfig/node24": "^24.0.5",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "@vue/tsconfig": "^0.9.1",
+    "eslint": "^10.12.0",
+    "eslint-plugin-vue": "^10.11.1",
+    "globals": "^17.13.0",
+    "npm-run-all2": "^9.0.3"
   },
   "engines": {
     "node": ">=24"

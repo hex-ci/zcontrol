@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test'
 
 /**
  * e2e 配置：默认跑本机开发环境（web 5173 / server 8090）。
@@ -24,4 +24,4 @@ export default defineConfig({
       use: { ...devices['Pixel 7'] },
     },
   ],
-});
+})

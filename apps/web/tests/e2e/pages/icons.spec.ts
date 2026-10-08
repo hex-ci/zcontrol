@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test'
 
 /**
  * 图标守卫。
@@ -11,13 +11,13 @@ import { expect, test, type Page } from '@playwright/test';
  *
  * 安全：/api/** 与 WebSocket 全部 mock，不连后端、不发 UDP、不碰任何真机。
  */
-test.use({ trace: 'off' });
-test.describe.configure({ timeout: 90_000 });
+test.use({ trace: 'off' })
+test.describe.configure({ timeout: 90_000 })
 
-const MAC = 'aabbccddeeff';
+const MAC = 'aabbccddeeff'
 
 /** 每个页面都要走一遍：页面换了图标也可能引入无效名字 */
-const ROUTES = ['/', '/add', '/settings', '/about', `/device/${MAC}/settings`, `/device/${MAC}/plug`];
+const ROUTES = ['/', '/add', '/settings', '/about', `/device/${MAC}/settings`, `/device/${MAC}/plug`]
 
 const DEVICE = {
   mac: MAC,
@@ -40,13 +40,13 @@ const DEVICE = {
     tasks: [null, null, null, null, null],
   },
   updatedAt: 1700000000000,
-};
+}
 
 async function mockBackend(page: Page): Promise<void> {
   await page.routeWebSocket(/\/ws$/, () => {
     /* 静默 mock：不连真实后端 */
-  });
-  await page.route('**/api/status', (r) =>
+  })
+  await page.route('**/api/status', r =>
     r.fulfill({
       json: {
         mqtt: { connected: true, uri: '192.168.1.10:1883', error: null },
@@ -57,8 +57,8 @@ async function mockBackend(page: Page): Promise<void> {
         localIps: ['192.168.1.50'],
       },
     }),
-  );
-  await page.route('**/api/settings', (r) =>
+  )
+  await page.route('**/api/settings', r =>
     r.fulfill({
       json: {
         mqtt_uri: '192.168.1.10:1883',
@@ -68,72 +68,72 @@ async function mockBackend(page: Page): Promise<void> {
         version_no_ask: '',
       },
     }),
-  );
-  await page.route('**/api/devices', (r) => r.fulfill({ json: { devices: [DEVICE] } }));
-  await page.route('**/api/devices/*/settings', (r) => r.fulfill({ json: { always_UDP: false } }));
-  await page.route('**/api/devices/*/cmd', (r) =>
+  )
+  await page.route('**/api/devices', r => r.fulfill({ json: { devices: [DEVICE] } }))
+  await page.route('**/api/devices/*/settings', r => r.fulfill({ json: { always_UDP: false } }))
+  await page.route('**/api/devices/*/cmd', r =>
     r.fulfill({ json: { sent: { channel: 'mqtt', topic: `device/zm1/${MAC}/set`, payload: '' } } }),
-  );
-  await page.route('**/api/discovery/scan', (r) =>
+  )
+  await page.route('**/api/discovery/scan', r =>
     r.fulfill({ json: { active: false, devices: [] } }),
-  );
+  )
 }
 
 /** 找出没有字形的图标（名字不在 Vant 图标表里） */
 async function invalidIcons(page: Page): Promise<string[]> {
   return page.evaluate(() =>
     [...document.querySelectorAll('.van-icon')]
-      .map((el) => ({
+      .map(el => ({
         cls: el.className,
         content: getComputedStyle(el, '::before').content,
       }))
-      .filter((i) => i.content === 'none' || i.content === '' || i.content === 'normal')
-      .map((i) => `${i.cls} → ::before=${i.content}`),
-  );
+      .filter(i => i.content === 'none' || i.content === '' || i.content === 'normal')
+      .map(i => `${i.cls} → ::before=${i.content}`),
+  )
 }
 
 for (const route of ROUTES) {
   test(`${route}：所有图标都有真实字形`, async ({ page }) => {
-    await mockBackend(page);
-    await page.goto(`/#${route}`);
-    await expect(page.locator('#app > div')).toBeVisible();
+    await mockBackend(page)
+    await page.goto(`/#${route}`)
+    await expect(page.locator('#app > div')).toBeVisible()
 
-    const bad = await invalidIcons(page);
-    expect(bad, `无效图标（名字不在 Vant 图标表里）:\n${bad.join('\n')}`).toEqual([]);
-  });
+    const bad = await invalidIcons(page)
+    expect(bad, `无效图标（名字不在 Vant 图标表里）:\n${bad.join('\n')}`).toEqual([])
+  })
 }
 
 test('云同步入口可见：图标有真实字形 + 点按区域和另外两个图标一致', async ({ page }) => {
-  await mockBackend(page);
-  await page.goto('/');
-  const entry = page.getByTestId('nav-sync');
-  await expect(entry).toBeVisible();
+  await mockBackend(page)
+  await page.goto('/')
+  const entry = page.getByTestId('nav-sync')
+  await expect(entry).toBeVisible()
 
   // 图标本身有字形（曾用不存在的 cloud-o，渲染出来是空的）
   const iconContent = await page.evaluate(() => {
-    const el = document.querySelector('[data-testid="nav-sync"] .van-icon');
-    return el ? getComputedStyle(el, '::before').content : null;
-  });
-  expect(iconContent).not.toBeNull();
-  expect(['none', '', 'normal']).not.toContain(iconContent);
+    const el = document.querySelector('[data-testid="nav-sync"] .van-icon')
+    return el ? getComputedStyle(el, '::before').content : null
+  })
+  expect(iconContent).not.toBeNull()
+  expect(['none', '', 'normal']).not.toContain(iconContent)
 
   // 点按区域要和『?』『✎』两个图标（34px）同级：坏掉的图标只有 16px
-  const syncBox = await entry.boundingBox();
-  const docBox = await page.getByTestId('nav-doc').boundingBox();
-  expect(syncBox?.width ?? 0).toBeGreaterThan(30);
-  expect(Math.abs((syncBox?.width ?? 0) - (docBox?.width ?? 0))).toBeLessThanOrEqual(2);
-});
+  const syncBox = await entry.boundingBox()
+  const docBox = await page.getByTestId('nav-doc').boundingBox()
+  expect(syncBox?.width ?? 0).toBeGreaterThan(30)
+  expect(Math.abs((syncBox?.width ?? 0) - (docBox?.width ?? 0))).toBeLessThanOrEqual(2)
+})
 
 test('设备名较长时，云同步入口不被挤出可视区', async ({ page }) => {
-  await mockBackend(page);
-  await page.route('**/api/devices', (r) =>
+  await mockBackend(page)
+  await page.route('**/api/devices', r =>
     r.fulfill({ json: { devices: [{ ...DEVICE, name: '公司开放原子开源基金会22层茶水间检测仪' }] } }),
-  );
-  await page.goto('/');
+  )
+  await page.goto('/')
 
-  const entry = page.getByTestId('nav-sync');
-  await expect(entry).toBeVisible();
-  const box = await entry.boundingBox();
-  const bar = await page.locator('.van-nav-bar').boundingBox();
-  expect(box && bar && box.x + box.width <= bar.x + bar.width + 1).toBe(true);
-});
+  const entry = page.getByTestId('nav-sync')
+  await expect(entry).toBeVisible()
+  const box = await entry.boundingBox()
+  const bar = await page.locator('.van-nav-bar').boundingBox()
+  expect(box && bar && box.x + box.width <= bar.x + bar.width + 1).toBe(true)
+})

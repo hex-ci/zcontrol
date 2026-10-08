@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "zm1:backup": "node tools/zm1-backup.mjs",
-    "sniff": "node tools/mqtt-sniff.mjs --broker 127.0.0.1:1883 --sec 10"
+    "sniff": "node tools/mqtt-sniff.mjs --broker 127.0.0.1:1883 --sec 10",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/static": "^10.1.5",

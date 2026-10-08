@@ -2,28 +2,28 @@
 /**
  * 帮助/关于页：当前版本 / 作者 / 项目地址，以及 zM1 通信协议文档入口。
  */
-import { onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import AppNavBar from '../components/AppNavBar.vue';
-import { useAppStore } from '../stores/app';
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import AppNavBar from '../components/AppNavBar.vue'
+import { useAppStore } from '../stores/app'
 
-const router = useRouter();
-const app = useAppStore();
+const router = useRouter()
+const app = useAppStore()
 
-const AUTHOR_GITHUB = 'https://github.com/hex-ci';
-const PROJECT_URL = 'https://github.com/hex-ci/zcontrol';
-const PROTOCOL_DOC = 'https://github.com/hex-ci/zcontrol/blob/main/docs/PROTOCOL.md';
+const AUTHOR_GITHUB = 'https://github.com/hex-ci'
+const PROJECT_URL = 'https://github.com/hex-ci/zcontrol'
+const PROTOCOL_DOC = 'https://github.com/hex-ci/zcontrol/blob/main/docs/PROTOCOL.md'
 
 onMounted(() => {
   if (!app.status) {
     app.loadStatus().catch(() => {
       /* 后端不可用时忽略 */
-    });
+    })
   }
-});
+})
 
 function back() {
-  router.back();
+  router.back()
 }
 </script>
 
@@ -31,8 +31,8 @@ function back() {
   <div class="flex min-h-full flex-col bg-gray-50">
     <AppNavBar title="关于" back @back="back" />
 
-    <van-cell-group inset class="mt-3">
-      <van-cell
+    <VanCellGroup inset class="mt-3">
+      <VanCell
         title="当前版本"
         :value="app.status?.versionName || '--'"
         data-testid="about-version"
@@ -57,9 +57,9 @@ function back() {
         <div class="van-cell__title"><span>项目地址</span></div>
         <div class="van-cell__value"><span>{{ PROJECT_URL }}</span></div>
       </a>
-    </van-cell-group>
+    </VanCellGroup>
 
-    <van-cell-group inset class="mt-3 mb-6" title="相关文档">
+    <VanCellGroup inset class="mt-3 mb-6" title="相关文档">
       <div class="flex flex-col gap-2 p-4">
         <a
           :href="PROTOCOL_DOC"
@@ -71,6 +71,6 @@ function back() {
           zM1 通信协议
         </a>
       </div>
-    </van-cell-group>
+    </VanCellGroup>
   </div>
 </template>

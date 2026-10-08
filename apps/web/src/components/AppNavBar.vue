@@ -19,25 +19,25 @@
  * 点了却没任何反应——关掉它，改成只让真正的控件（三个按钮、左侧菜单图标）自己有光标与按压反馈。
  */
 defineProps<{
-  title: string;
-  menu?: boolean;
-  doc?: boolean;
-  sync?: boolean;
-  edit?: boolean;
-  back?: boolean;
-}>();
+  title: string
+  menu?: boolean
+  doc?: boolean
+  sync?: boolean
+  edit?: boolean
+  back?: boolean
+}>()
 
 const emit = defineEmits<{
-  menu: [];
-  doc: [];
-  sync: [];
-  edit: [];
-  back: [];
-}>();
+  menu: []
+  doc: []
+  sync: []
+  edit: []
+  back: []
+}>()
 </script>
 
 <template>
-  <van-nav-bar
+  <VanNavBar
     :title="title"
     :left-arrow="!!back"
     :clickable="false"
@@ -48,7 +48,7 @@ const emit = defineEmits<{
   >
     <template v-if="menu" #left>
       <span class="flex cursor-pointer items-center active:opacity-60">
-        <van-icon name="bars" size="20" />
+        <VanIcon name="bars" size="20" />
       </span>
     </template>
     <template #right>
@@ -60,7 +60,7 @@ const emit = defineEmits<{
           data-testid="nav-doc"
           @click="emit('doc')"
         >
-          <van-icon name="question-o" size="18" />
+          <VanIcon name="question-o" size="18" />
         </button>
         <!-- 云同步：图标名必须在 Vant 图标表里存在（曾用 cloud-o → 画不出字形，按钮是 16px 的空白区） -->
         <button
@@ -72,7 +72,7 @@ const emit = defineEmits<{
           aria-label="云同步：把本机 MQTT 服务器配置下发给设备"
           @click="emit('sync')"
         >
-          <van-icon name="exchange" size="18" />
+          <VanIcon name="exchange" size="18" />
         </button>
         <button
           v-if="edit"
@@ -81,9 +81,9 @@ const emit = defineEmits<{
           data-testid="nav-edit"
           @click="emit('edit')"
         >
-          <van-icon name="edit" size="18" />
+          <VanIcon name="edit" size="18" />
         </button>
       </div>
     </template>
-  </van-nav-bar>
+  </VanNavBar>
 </template>

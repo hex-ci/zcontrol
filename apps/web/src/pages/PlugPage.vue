@@ -14,45 +14,45 @@
  * 数据来源：useDeviceStore().byMac(mac).state.tasks；未获取到为 null → 显示占位，不编造值。
  * 所有下发统一走 useDeviceStore().sendCmd（页面不直接 fetch）。
  */
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { showToast } from 'vant';
-import AppNavBar from '../components/AppNavBar.vue';
-import TaskEditPopup from '../components/TaskEditPopup.vue';
-import CountDownPopup from '../components/CountDownPopup.vue';
-import type { Zm1Task } from '../api';
-import { useAppStore } from '../stores/app';
-import { useDeviceStore } from '../stores/devices';
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { showToast } from 'vant'
+import AppNavBar from '../components/AppNavBar.vue'
+import TaskEditPopup from '../components/TaskEditPopup.vue'
+import CountDownPopup from '../components/CountDownPopup.vue'
+import type { Zm1Task } from '../api'
+import { useAppStore } from '../stores/app'
+import { useDeviceStore } from '../stores/devices'
 
-const route = useRoute();
-const router = useRouter();
-const app = useAppStore();
-const device = useDeviceStore();
+const route = useRoute()
+const router = useRouter()
+const app = useAppStore()
+const device = useDeviceStore()
 
-const mac = computed(() => String(route.params.mac));
-const current = computed(() => device.byMac(mac.value));
-const title = computed(() => (current.value ? `${current.value.name} 亮度定时` : '亮度定时'));
+const mac = computed(() => String(route.params.mac))
+const current = computed(() => device.byMac(mac.value))
+const title = computed(() => (current.value ? `${current.value.name} 亮度定时` : '亮度定时'))
 
 /** 5 组任务；未获取到为 null（列表显示占位） */
-const tasks = ref<(Zm1Task | null)[]>([null, null, null, null, null]);
-const storeTasks = computed(() => current.value?.state?.tasks ?? null);
+const tasks = ref<(Zm1Task | null)[]>([null, null, null, null, null])
+const storeTasks = computed(() => current.value?.state?.tasks ?? null)
 
 watch(
   storeTasks,
   (list) => {
-    tasks.value = Array.from({ length: 5 }, (_, i) => list?.[i] ?? null);
+    tasks.value = Array.from({ length: 5 }, (_, i) => list?.[i] ?? null)
   },
   { immediate: true, deep: true },
-);
+)
 
-const refreshing = ref(false);
+const refreshing = ref(false)
 
-const pad = (n: number) => String(n).padStart(2, '0');
+const pad = (n: number) => String(n).padStart(2, '0')
 /** 时间文本 "%02d:%02d" */
-const timeText = (t: Zm1Task | null) => (t ? `${pad(t.hour)}:${pad(t.minute)}` : '--:--');
+const timeText = (t: Zm1Task | null) => (t ? `${pad(t.hour)}:${pad(t.minute)}` : '--:--')
 /** 动作文本：action != 0 ? "亮度:"+action : "关屏" */
 const actionText = (t: Zm1Task | null) =>
-  t ? (t.brightness !== 0 ? `亮度: ${t.brightness}` : '关屏') : '--';
+  t ? (t.brightness !== 0 ? `亮度: ${t.brightness}` : '关屏') : '--'
 
 /** 查询 5 组定时任务 */
 async function queryTasks() {
@@ -63,9 +63,10 @@ async function queryTasks() {
       task_2: {},
       task_3: {},
       task_4: {},
-    });
-  } catch (e) {
-    showToast((e as Error).message);
+    })
+  }
+  catch (e) {
+    showToast((e as Error).message)
   }
 }
 
@@ -79,82 +80,86 @@ async function sendTask(index: number, task: Zm1Task) {
         brightness: task.brightness,
         on: task.on,
       },
-    });
-  } catch (e) {
-    showToast((e as Error).message);
-    throw e;
+    })
+  }
+  catch (e) {
+    showToast((e as Error).message)
+    throw e
   }
 }
 
 /** 行开关点击：立即下发该组（on 取开关勾选态） */
 async function onToggle(index: number, checked: boolean) {
-  const task = tasks.value[index];
-  if (!task) return; // 未获取到数据时不编造下发
-  const prev = task;
-  const next: Zm1Task = { ...task, on: checked ? 1 : 0 };
-  tasks.value[index] = next; // 乐观更新，失败回滚
+  const task = tasks.value[index]
+  if (!task) return // 未获取到数据时不编造下发
+  const prev = task
+  const next: Zm1Task = { ...task, on: checked ? 1 : 0 }
+  tasks.value[index] = next // 乐观更新，失败回滚
   try {
-    await sendTask(index, next);
-  } catch {
-    tasks.value[index] = prev;
+    await sendTask(index, next)
+  }
+  catch {
+    tasks.value[index] = prev
   }
 }
 
 /** 弹窗：设置定时任务 */
-const editShow = ref(false);
-const editIndex = ref(0);
-const editTask = computed<Zm1Task | null>(() => tasks.value[editIndex.value] ?? null);
+const editShow = ref(false)
+const editIndex = ref(0)
+const editTask = computed<Zm1Task | null>(() => tasks.value[editIndex.value] ?? null)
 
 function openEdit(index: number) {
-  editIndex.value = index;
-  editShow.value = true;
+  editIndex.value = index
+  editShow.value = true
 }
 
 /** 确认定时任务：on 恒为 1 */
-async function onEditConfirm(payload: { hour: number; minute: number; brightness: number }) {
+async function onEditConfirm(payload: { hour: number, minute: number, brightness: number }) {
   try {
     await device.sendCmd(mac.value, {
       [`task_${editIndex.value}`]: { ...payload, on: 1 },
-    });
-  } catch (e) {
-    showToast((e as Error).message);
+    })
+  }
+  catch (e) {
+    showToast((e as Error).message)
   }
 }
 
 /** 弹窗：设置倒计时（固定第 5 组 task_4，on 恒为 1） */
-const cdShow = ref(false);
+const cdShow = ref(false)
 
-async function onCountDownConfirm(payload: { hour: number; minute: number; brightness: number }) {
+async function onCountDownConfirm(payload: { hour: number, minute: number, brightness: number }) {
   try {
-    await device.sendCmd(mac.value, { task_4: { ...payload, on: 1 } });
-  } catch (e) {
-    showToast((e as Error).message);
+    await device.sendCmd(mac.value, { task_4: { ...payload, on: 1 } })
+  }
+  catch (e) {
+    showToast((e as Error).message)
   }
 }
 
 /** 下拉刷新 */
 async function onRefresh() {
-  await queryTasks();
-  refreshing.value = false;
+  await queryTasks()
+  refreshing.value = false
 }
 
 onMounted(() => {
-  if (!device.byMac(mac.value)) void device.load().catch(() => {});
+  if (!device.byMac(mac.value)) void device.load().catch(() => {})
   // ServiceConnected / MqttConnected 均触发查询
-  void queryTasks();
-});
+  void queryTasks()
+})
 
 // MqttConnected / MqttDisconnected 时重新查询
 watch(
   () => app.status?.mqtt.connected,
   (now, before) => {
-    if (before === undefined) return;
-    if (now !== before) void queryTasks();
+    if (before === undefined) return
+    if (now !== before) void queryTasks()
   },
-);
+)
 
 function goBack() {
-  router.push('/');
+  router.push('/')
 }
 </script>
 
@@ -162,7 +167,7 @@ function goBack() {
   <div class="flex min-h-full flex-col">
     <AppNavBar :title="title" back @back="goBack" />
 
-    <van-pull-refresh v-model="refreshing" class="flex-1" @refresh="onRefresh">
+    <VanPullRefresh v-model="refreshing" class="flex-1" @refresh="onRefresh">
       <div class="p-2">
         <div class="py-2 text-center text-[15px] text-gray-600">定时任务</div>
 
@@ -178,7 +183,7 @@ function goBack() {
               timeText(t)
             }}</span>
             <span class="flex-1 text-[20px] text-gray-700">{{ actionText(t) }}</span>
-            <van-switch
+            <VanSwitch
               class="shrink-0"
               :model-value="!!(t && t.on)"
               :disabled="!t"
@@ -189,12 +194,12 @@ function goBack() {
         </div>
 
         <div class="pt-4">
-          <van-button type="primary" color="#3F51B5" block @click="cdShow = true">
+          <VanButton type="primary" color="#3F51B5" block @click="cdShow = true">
             设置倒计时
-          </van-button>
+          </VanButton>
         </div>
       </div>
-    </van-pull-refresh>
+    </VanPullRefresh>
 
     <TaskEditPopup v-model:show="editShow" :task="editTask" @confirm="onEditConfirm" />
     <CountDownPopup v-model:show="cdShow" @confirm="onCountDownConfirm" />

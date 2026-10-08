@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test'
 
 /**
  * zM1 设备设置页 e2e。
@@ -7,9 +7,9 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 
 // 关闭 trace：多个 spec 并行/被并行执行时会竞争 test-results/ 产物目录，
 // 导致 browserContext.close 时 trace 文件 ENOENT 的伪失败（与本用例断言无关）。
-test.use({ trace: 'off' });
+test.use({ trace: 'off' })
 
-const MAC = 'aabbccddeeff';
+const MAC = 'aabbccddeeff'
 
 const BASE_STATE = {
   version: 'v1.0.0',
@@ -17,7 +17,7 @@ const BASE_STATE = {
   zone: 0,
   interval: 60,
   time: 1586000000,
-};
+}
 
 const DEVICE = {
   mac: MAC,
@@ -29,7 +29,7 @@ const DEVICE = {
   order: 0,
   state: BASE_STATE,
   updatedAt: 1759700000000,
-};
+}
 
 const OTA_WITH_UPDATE = {
   hasUpdate: true,
@@ -38,7 +38,7 @@ const OTA_WITH_UPDATE = {
   title: 'zM1 新版本说明',
   message: '修复已知问题',
   ota: 'https://example.com/zM1/ota.bin',
-};
+}
 
 const OTA_LATEST = {
   hasUpdate: false,
@@ -47,22 +47,22 @@ const OTA_LATEST = {
   title: '',
   message: '',
   ota: null,
-};
+}
 
 interface Harness {
   /** 每次 POST /devices/:mac/cmd 的 cmd 对象（已剥离后端注入的 mac） */
-  cmds: Record<string, unknown>[];
-  otaChecks: number;
-  settingsPuts: { always_UDP?: boolean }[];
+  cmds: Record<string, unknown>[]
+  otaChecks: number
+  settingsPuts: { always_UDP?: boolean }[]
   /** 通过 mock 的 /ws 推送 devices 事件（模拟设备回包，驱动响应式回显） */
-  pushState: (patch: Record<string, unknown>) => void;
+  pushState: (patch: Record<string, unknown>) => void
 }
 
 async function setup(
   page: Page,
-  opts: { ota?: unknown; device?: unknown } = {},
+  opts: { ota?: unknown, device?: unknown } = {},
 ): Promise<Harness> {
-  let socket: { send(data: string): void } | null = null;
+  let socket: { send(data: string): void } | null = null
   const h: Harness = {
     cmds: [],
     otaChecks: 0,
@@ -73,45 +73,45 @@ async function setup(
           type: 'devices',
           data: { devices: [{ ...DEVICE, state: { ...BASE_STATE, ...patch } }] },
         }),
-      );
+      )
     },
-  };
+  }
 
   // 静默 mock WebSocket：不连真实后端，避免真实设备事件（另一进程的 fake-zm1）
   // 通过 /ws 推送 devices 覆盖本用例的 REST fixture；同时保留 socket 以便用例主动推送。
   await page.routeWebSocket(/\/ws$/, (ws) => {
-    socket = ws;
-  });
+    socket = ws
+  })
 
   await page.route('**/api/**', async (route: Route) => {
-    const req = route.request();
-    const path = new URL(req.url()).pathname;
-    const method = req.method();
+    const req = route.request()
+    const path = new URL(req.url()).pathname
+    const method = req.method()
     const fulfill = (body: unknown): Promise<void> =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
 
     if (path === '/api/devices' && method === 'GET') {
-      return fulfill({ devices: [opts.device ?? DEVICE] });
+      return fulfill({ devices: [opts.device ?? DEVICE] })
     }
 
     if (path === `/api/devices/${MAC}/settings`) {
       if (method === 'PUT') {
-        h.settingsPuts.push(req.postDataJSON() as { always_UDP?: boolean });
-        return fulfill({ always_UDP: true });
+        h.settingsPuts.push(req.postDataJSON() as { always_UDP?: boolean })
+        return fulfill({ always_UDP: true })
       }
-      return fulfill({ always_UDP: false });
+      return fulfill({ always_UDP: false })
     }
 
     if (path === `/api/devices/${MAC}/cmd` && method === 'POST') {
-      h.cmds.push((req.postDataJSON() as { cmd: Record<string, unknown> }).cmd);
+      h.cmds.push((req.postDataJSON() as { cmd: Record<string, unknown> }).cmd)
       return fulfill({
         sent: { channel: 'mqtt', topic: `device/zm1/${MAC}/set`, payload: req.postData() ?? '' },
-      });
+      })
     }
 
     if (path === `/api/devices/${MAC}/ota/check`) {
-      h.otaChecks += 1;
-      return fulfill(opts.ota ?? OTA_WITH_UPDATE);
+      h.otaChecks += 1
+      return fulfill(opts.ota ?? OTA_WITH_UPDATE)
     }
 
     if (path === '/api/status') {
@@ -122,7 +122,7 @@ async function setup(
         version: '1.0.0',
         versionName: '1.0.0',
         localIps: ['192.168.1.10'],
-      });
+      })
     }
 
     if (path === '/api/settings') {
@@ -132,36 +132,36 @@ async function setup(
         mqtt_clientid: 'c',
         mqtt_password_set: false,
         version_no_ask: '',
-      });
+      })
     }
 
-    return fulfill({});
-  });
+    return fulfill({})
+  })
 
-  return h;
+  return h
 }
 
 /** 进页面时的自动查询（version/interval/ssid/zone 全 null）会先落一条，之后才是用户操作 */
-const userCmds = (h: Harness): Record<string, unknown>[] => h.cmds.slice(1);
+const userCmds = (h: Harness): Record<string, unknown>[] => h.cmds.slice(1)
 
 async function open(page: Page, h: Harness): Promise<void> {
-  await page.goto(`/#/device/${MAC}/settings`);
-  await expect(page.getByText('设备设置').first()).toBeVisible();
+  await page.goto(`/#/device/${MAC}/settings`)
+  await expect(page.getByText('设备设置').first()).toBeVisible()
   // 等待设备（含 state）加载完成，避免交互早于 /api/devices 返回
-  await expect(page.getByText('测试检测仪').first()).toBeVisible();
+  await expect(page.getByText('测试检测仪').first()).toBeVisible()
   // 等进页面自动发出的查询落地，后续断言只针对用户操作，不受它干扰
-  await expect.poll(() => h.cmds.length).toBeGreaterThan(0);
+  await expect.poll(() => h.cmds.length).toBeGreaterThan(0)
 }
 
 test('设备设置页条目齐全（并截图）', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
   const expected = [
     '名称',
-    'MAC地址(点击复制)',
-    '总是通过UDP发送数据',
-    '即使连接MQTT服务器,也使用UDP发送数据',
+    'MAC 地址(点击复制)',
+    '总是通过 UDP 发送数据',
+    '即使连接 MQTT 服务器,也使用 UDP 发送数据',
     '连接的热点',
     '时区',
     '上报频率(秒)',
@@ -170,246 +170,246 @@ test('设备设置页条目齐全（并截图）', async ({ page }) => {
     '自动校时异常时使用',
     '重启设备',
     '重新获取数据',
-  ];
+  ]
   for (const t of expected) {
-    await expect(page.getByText(t).first()).toBeVisible();
+    await expect(page.getByText(t).first()).toBeVisible()
   }
 
   // fixture state 回显
-  await expect(page.getByText('测试检测仪').first()).toBeVisible();
-  await expect(page.getByText('TestWiFi').first()).toBeVisible();
-  await expect(page.getByText('v1.0.0').first()).toBeVisible();
-  await expect(page.getByText('aabbccddeeff').first()).toBeVisible();
-  await expect(page.getByText('UTC', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('测试检测仪').first()).toBeVisible()
+  await expect(page.getByText('TestWiFi').first()).toBeVisible()
+  await expect(page.getByText('v1.0.0').first()).toBeVisible()
+  await expect(page.getByText('aabbccddeeff').first()).toBeVisible()
+  await expect(page.getByText('UTC', { exact: true }).first()).toBeVisible()
 
-  await page.screenshot({ path: 'docs/screenshots/12-device-settings.png', fullPage: true });
-});
+  await page.screenshot({ path: 'docs/screenshots/12-device-settings.png', fullPage: true })
+})
 
 test('进页面自动请求设备数据：等待期间显示加载中，设备回包后出现详细数据', async ({ page }) => {
   // 真机首次进设置页就是这样：设备侧还没有 version/ssid/zone/interval
-  const device = { ...DEVICE, state: {} };
-  const h = await setup(page, { device });
-  await page.goto(`/#/device/${MAC}/settings`);
-  await expect(page.getByText('设备设置').first()).toBeVisible();
+  const device = { ...DEVICE, state: {} }
+  const h = await setup(page, { device })
+  await page.goto(`/#/device/${MAC}/settings`)
+  await expect(page.getByText('设备设置').first()).toBeVisible()
 
   // 不需要用户点任何东西：进页面即发出完整查询报文
-  await expect.poll(() => h.cmds.length).toBe(1);
-  expect(h.cmds[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
+  await expect.poll(() => h.cmds.length).toBe(1)
+  expect(h.cmds[0]).toEqual({ version: null, interval: null, ssid: null, zone: null })
 
   // 还没取到的四项显示「加载中」
-  const cell = (title: string) => page.locator('.van-cell').filter({ hasText: title }).first();
-  await expect(page.getByText('加载中')).toHaveCount(4);
+  const cell = (title: string) => page.locator('.van-cell').filter({ hasText: title }).first()
+  await expect(page.getByText('加载中')).toHaveCount(4)
 
   // 设备回包 → 加载态结束，出现详细数据
-  h.pushState({ version: 'v0.1.4', ssid: 'MyWiFi', zone: 480, interval: 60 });
-  await expect(page.getByText('加载中')).toHaveCount(0);
-  await expect(cell('当前版本(点击检查新版本)')).toContainText('v0.1.4');
-  await expect(cell('连接的热点')).toContainText('MyWiFi');
-  await expect(cell('时区')).toContainText('UTC+08:00');
-  await expect(cell('上报频率(秒)')).toContainText('60');
-});
+  h.pushState({ version: 'v0.1.4', ssid: 'MyWiFi', zone: 480, interval: 60 })
+  await expect(page.getByText('加载中')).toHaveCount(0)
+  await expect(cell('当前版本(点击检查新版本)')).toContainText('v0.1.4')
+  await expect(cell('连接的热点')).toContainText('MyWiFi')
+  await expect(cell('时区')).toContainText('UTC+08:00')
+  await expect(cell('上报频率(秒)')).toContainText('60')
+})
 
 test('时区选择器 33 项，选 UTC+08:00 下发 zone 与 time', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  await page.getByText('时区').click();
+  await page.getByText('时区').click()
 
-  const options = page.locator('.van-picker-column__item');
-  await expect(options).toHaveCount(33);
+  const options = page.locator('.van-picker-column__item')
+  await expect(options).toHaveCount(33)
 
-  await page.getByText('UTC+08:00', { exact: true }).click();
-  await page.locator('.van-picker__confirm').click();
+  await page.getByText('UTC+08:00', { exact: true }).click()
+  await page.locator('.van-picker__confirm').click()
 
-  await expect(page.getByText('已发送时区/校时请求,请等待校时结果返回')).toBeVisible();
-  await expect.poll(() => userCmds(h).length).toBe(2);
-  expect(userCmds(h)[0]).toEqual({ zone: 480 });
-  expect(userCmds(h)[1]).toEqual({ time: -1 });
-});
+  await expect(page.getByText('已发送时区/校时请求,请等待校时结果返回')).toBeVisible()
+  await expect.poll(() => userCmds(h).length).toBe(2)
+  expect(userCmds(h)[0]).toEqual({ zone: 480 })
+  expect(userCmds(h)[1]).toEqual({ time: -1 })
+})
 
 test('上报频率超出 1-255 报错且不下发，合法值下发', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  const input = page.locator('.van-dialog .van-field__control');
+  const input = page.locator('.van-dialog .van-field__control')
 
   // 超范围：300
-  await page.getByText('上报频率(秒)').click();
-  await input.fill('300');
-  await page.locator('.van-dialog__confirm').click();
-  await expect(page.getByText('输入有误!范围1-255')).toBeVisible();
-  await page.waitForTimeout(300);
-  expect(userCmds(h)).toHaveLength(0);
+  await page.getByText('上报频率(秒)').click()
+  await input.fill('300')
+  await page.locator('.van-dialog__confirm').click()
+  await expect(page.getByText('输入有误!范围 1-255')).toBeVisible()
+  await page.waitForTimeout(300)
+  expect(userCmds(h)).toHaveLength(0)
 
   // 下界外：0
-  await page.getByText('上报频率(秒)').click();
-  await input.fill('0');
-  await page.locator('.van-dialog__confirm').click();
-  await expect(page.getByText('输入有误!范围1-255')).toBeVisible();
-  await page.waitForTimeout(300);
-  expect(userCmds(h)).toHaveLength(0);
+  await page.getByText('上报频率(秒)').click()
+  await input.fill('0')
+  await page.locator('.van-dialog__confirm').click()
+  await expect(page.getByText('输入有误!范围 1-255')).toBeVisible()
+  await page.waitForTimeout(300)
+  expect(userCmds(h)).toHaveLength(0)
 
   // 合法：60
-  await page.getByText('上报频率(秒)').click();
-  await input.fill('60');
-  await page.locator('.van-dialog__confirm').click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  expect(userCmds(h)[0]).toEqual({ interval: 60 });
-});
+  await page.getByText('上报频率(秒)').click()
+  await input.fill('60')
+  await page.locator('.van-dialog__confirm').click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  expect(userCmds(h)[0]).toEqual({ interval: 60 })
+})
 
 test('重启设备需确认后才下发', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  await page.getByText('重启设备').click();
-  await expect(page.getByText('重启设备?')).toBeVisible();
+  await page.getByText('重启设备').click()
+  await expect(page.getByText('重启设备?')).toBeVisible()
   await expect(
     page.getByText('如果设备死机此处重启可能无效,依然需要手动拔插插头才能重启设备'),
-  ).toBeVisible();
+  ).toBeVisible()
 
   // 未确认前不下发
-  expect(userCmds(h)).toHaveLength(0);
+  expect(userCmds(h)).toHaveLength(0)
 
-  await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  expect(userCmds(h)[0]).toEqual({ cmd: 'restart' });
-});
+  await page.getByRole('button', { name: '确定' }).click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  expect(userCmds(h)[0]).toEqual({ cmd: 'restart' })
+})
 
 test('重新获取数据下发完整查询报文', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  await page.getByText('重新获取数据').click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  expect(userCmds(h)[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
-});
+  await page.getByText('重新获取数据').click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  expect(userCmds(h)[0]).toEqual({ version: null, interval: null, ssid: null, zone: null })
+})
 
 test('点当前版本会 GET ota/check 并可按响应弹窗更新', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  await page.getByText('当前版本(点击检查新版本)').click();
-  await expect.poll(() => h.otaChecks).toBe(1);
+  await page.getByText('当前版本(点击检查新版本)').click()
+  await expect.poll(() => h.otaChecks).toBe(1)
 
-  await expect(page.getByText('获取到最新版本:v1.2.3')).toBeVisible();
-  await expect(page.getByText('zM1 新版本说明')).toBeVisible();
-  await expect(page.getByText('修复已知问题')).toBeVisible();
+  await expect(page.getByText('获取到最新版本: v1.2.3')).toBeVisible()
+  await expect(page.getByText('zM1 新版本说明')).toBeVisible()
+  await expect(page.getByText('修复已知问题')).toBeVisible()
 
-  expect(userCmds(h)).toHaveLength(0);
-  await page.getByRole('button', { name: '更新' }).click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  expect(userCmds(h)[0]).toEqual({ setting: { ota: 'https://example.com/zM1/ota.bin' } });
-});
+  expect(userCmds(h)).toHaveLength(0)
+  await page.getByRole('button', { name: '更新' }).click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  expect(userCmds(h)[0]).toEqual({ setting: { ota: 'https://example.com/zM1/ota.bin' } })
+})
 
 test('已是最新版本时只弹 Toast', async ({ page }) => {
-  const h = await setup(page, { ota: OTA_LATEST });
-  await open(page, h);
+  const h = await setup(page, { ota: OTA_LATEST })
+  await open(page, h)
 
-  await page.getByText('当前版本(点击检查新版本)').click();
-  await expect(page.getByText('已是最新版本')).toBeVisible();
-  expect(userCmds(h)).toHaveLength(0);
-});
+  await page.getByText('当前版本(点击检查新版本)').click()
+  await expect(page.getByText('已是最新版本')).toBeVisible()
+  expect(userCmds(h)).toHaveLength(0)
+})
 
 test('未获取到版本时提示并重新获取数据', async ({ page }) => {
-  const device = { ...DEVICE, state: { ssid: 'TestWiFi', zone: 0, interval: 60 } };
-  const h = await setup(page, { device });
-  await open(page, h);
+  const device = { ...DEVICE, state: { ssid: 'TestWiFi', zone: 0, interval: 60 } }
+  const h = await setup(page, { device })
+  await open(page, h)
 
-  await page.getByText('当前版本(点击检查新版本)').click();
-  await expect(page.getByText('未获取到当前设备版本')).toBeVisible();
-  await expect(page.getByText('请点击重新获取数据.获取到当前设备版本后重试.')).toBeVisible();
-  expect(h.otaChecks).toBe(0);
+  await page.getByText('当前版本(点击检查新版本)').click()
+  await expect(page.getByText('未获取到当前设备版本')).toBeVisible()
+  await expect(page.getByText('请点击重新获取数据.获取到当前设备版本后重试.')).toBeVisible()
+  expect(h.otaChecks).toBe(0)
 
-  await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  expect(userCmds(h)[0]).toEqual({ version: null, interval: null, ssid: null, zone: null });
-});
+  await page.getByRole('button', { name: '确定' }).click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  expect(userCmds(h)[0]).toEqual({ version: null, interval: null, ssid: null, zone: null })
+})
 
 test('长按手动校时行弹出固件地址输入框', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  const cell = page.locator('.van-cell').filter({ hasText: '手动校时' });
+  const cell = page.locator('.van-cell').filter({ hasText: '手动校时' })
   const longPress = async (): Promise<void> => {
-    await cell.dispatchEvent('mousedown');
-    await page.waitForTimeout(900); // 组件内阈值 600ms，留足余量（这台机器并发负载高）
-    await cell.dispatchEvent('mouseup');
-  };
+    await cell.dispatchEvent('mousedown')
+    await page.waitForTimeout(900) // 组件内阈值 600ms，留足余量（这台机器并发负载高）
+    await cell.dispatchEvent('mouseup')
+  }
 
   // 只定位到「当前这个」弹窗：上一个弹窗关闭后可能仍留在 DOM 里，
   // 直接写 .van-dialog 会打到旧元素上（并行满负荷时实测会偶发失败）。
-  const dialog = () => page.locator('.van-dialog').filter({ hasText: '请输入固件下载地址' }).last();
-  const input = () => dialog().locator('.van-field__control');
+  const dialog = () => page.locator('.van-dialog').filter({ hasText: '请输入固件下载地址' }).last()
+  const input = () => dialog().locator('.van-field__control')
 
-  await longPress();
-  await expect(dialog()).toBeVisible();
-  await expect(page.getByText('警告:输入错误的地址可能导致固件损坏!')).toBeVisible();
+  await longPress()
+  await expect(dialog()).toBeVisible()
+  await expect(page.getByText('警告: 输入错误的地址可能导致固件损坏!')).toBeVisible()
 
-  await input().fill('ftp://not-http/ota.bin');
-  await dialog().locator('.van-dialog__confirm').click();
-  await expect(page.getByText('地址不合法')).toBeVisible();
-  await expect(dialog()).toBeHidden();
-  expect(userCmds(h)).toHaveLength(0);
+  await input().fill('ftp://not-http/ota.bin')
+  await dialog().locator('.van-dialog__confirm').click()
+  await expect(page.getByText('地址不合法')).toBeVisible()
+  await expect(dialog()).toBeHidden()
+  expect(userCmds(h)).toHaveLength(0)
 
   // 合法 http 地址才下发
-  await longPress();
-  await expect(dialog()).toBeVisible();
-  await input().fill('http://example.com/zM1/ota.bin');
-  await dialog().locator('.van-dialog__confirm').click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  expect(userCmds(h)[0]).toEqual({ setting: { ota: 'http://example.com/zM1/ota.bin' } });
-});
+  await longPress()
+  await expect(dialog()).toBeVisible()
+  await input().fill('http://example.com/zM1/ota.bin')
+  await dialog().locator('.van-dialog__confirm').click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  expect(userCmds(h)[0]).toEqual({ setting: { ota: 'http://example.com/zM1/ota.bin' } })
+})
 
 test('收到校时结果按 GMT+0 显示 yyyy-MM-dd HH:mm:ss', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  await page.getByText('手动校时').click();
-  await expect(page.getByText('手动校时?')).toBeVisible();
-  await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  expect(userCmds(h)[0]).toEqual({ time: -1 });
-  await page.waitForTimeout(300);
+  await page.getByText('手动校时').click()
+  await expect(page.getByText('手动校时?')).toBeVisible()
+  await page.getByRole('button', { name: '确定' }).click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  expect(userCmds(h)[0]).toEqual({ time: -1 })
+  await page.waitForTimeout(300)
 
   // 模拟设备回校时结果：1700000000 = 2023-11-14T22:13:20Z
-  h.pushState({ time: 1700000000 });
-  await expect(page.getByText('校时结果:2023-11-14 22:13:20')).toBeVisible();
-});
+  h.pushState({ time: 1700000000 })
+  await expect(page.getByText('校时结果: 2023-11-14 22:13:20')).toBeVisible()
+})
 
 test('校时结果小于阈值提示失败', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  await page.getByText('手动校时').click();
-  await page.getByRole('button', { name: '确定' }).click();
-  await expect.poll(() => userCmds(h).length).toBe(1);
-  await page.waitForTimeout(300);
+  await page.getByText('手动校时').click()
+  await page.getByRole('button', { name: '确定' }).click()
+  await expect.poll(() => userCmds(h).length).toBe(1)
+  await page.waitForTimeout(300)
 
-  h.pushState({ time: 1000000000 });
-  await expect(page.getByText('校时失败,请重试')).toBeVisible();
-});
+  h.pushState({ time: 1000000000 })
+  await expect(page.getByText('校时失败,请重试')).toBeVisible()
+})
 
 test('OTA 进度弹窗与成功/失败提示', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
   // 进行中：0-99
-  h.pushState({ ota_progress: 42 });
-  await expect(page.getByText('正在获取最新固件版本,请稍后....')).toBeVisible();
-  await expect(page.getByText('进度:42%')).toBeVisible();
+  h.pushState({ ota_progress: 42 })
+  await expect(page.getByText('正在获取最新固件版本,请稍后....')).toBeVisible()
+  await expect(page.getByText('进度: 42%')).toBeVisible()
 
   // 结束：>=100 → 成功
-  h.pushState({ ota_progress: 100 });
-  await expect(page.getByText('固件更新成功!')).toBeVisible();
-});
+  h.pushState({ ota_progress: 100 })
+  await expect(page.getByText('固件更新成功!')).toBeVisible()
+})
 
 test('OTA 进度 -1 提示失败', async ({ page }) => {
-  const h = await setup(page);
-  await open(page, h);
+  const h = await setup(page)
+  await open(page, h)
 
-  h.pushState({ ota_progress: 7 });
-  await expect(page.getByText('进度:7%')).toBeVisible();
+  h.pushState({ ota_progress: 7 })
+  await expect(page.getByText('进度: 7%')).toBeVisible()
 
-  h.pushState({ ota_progress: -1 });
-  await expect(page.getByText('固件更新失败!请重试')).toBeVisible();
-});
+  h.pushState({ ota_progress: -1 })
+  await expect(page.getByText('固件更新失败!请重试')).toBeVisible()
+})

@@ -22,6 +22,12 @@ jobs:
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
 
+      - name: 类型检查
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
       - name: 后端单元测试
         run: pnpm --filter @zcontrol/server test
 

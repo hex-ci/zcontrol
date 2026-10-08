@@ -7,24 +7,24 @@
  */
 defineProps<{
   /** 固定文案 */
-  label: string;
+  label: string
   /** 已格式化好的数值文本 */
-  value: string;
+  value: string
   /** 固定单位文案（ug/m³ / mg/m³） */
-  unit?: string;
+  unit?: string
   /** 前置图标（Vant icon name） */
-  icon?: string;
+  icon?: string
   /** lg = 40px 主值，md = 25px 次值 */
-  size?: 'lg' | 'md';
+  size?: 'lg' | 'md'
   /** 测试锚点 */
-  testid?: string;
-}>();
+  testid?: string
+}>()
 </script>
 
 <template>
   <div class="flex flex-col gap-1">
     <div class="flex items-center gap-1 text-[13px] text-white/70">
-      <van-icon v-if="icon" :name="icon" size="14" />
+      <VanIcon v-if="icon" :name="icon" size="14" />
       <span>{{ label }}</span>
     </div>
     <div class="flex items-baseline gap-1">

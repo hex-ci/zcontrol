@@ -1,19 +1,12 @@
 {
+  "extends": ["@tsconfig/node24/tsconfig.json", "../../tsconfig.base.json"],
+  "include": ["src/**/*.ts", "test/**/*.ts"],
   "compilerOptions": {
-    "target": "ES2023",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2023"],
     "types": ["node"],
-    "strict": true,
-    "noEmit": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true,
-    "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+    "noEmit": true
+  }
 }

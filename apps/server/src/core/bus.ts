@@ -1,11 +1,11 @@
-import { EventEmitter } from 'node:events';
+import { EventEmitter } from 'node:events'
 
 /**
  * 后端内部事件总线；WS 层订阅这里的事件推给前端。
  * 事件名与载荷见各 emit 处。
  */
-export const bus = new EventEmitter();
-bus.setMaxListeners(200);
+export const bus = new EventEmitter()
+bus.setMaxListeners(200)
 
 export const EV = {
   /** MQTT 连接状态变化：{connected, uri, error} */
@@ -28,6 +28,6 @@ export const EV = {
   SCAN_FOUND: 'scan.found',
   /** 扫描响应（原始上报）：{name, mac, type, ip} */
   REPORT: 'device.report',
-} as const;
+} as const
 
-export type BusEventName = (typeof EV)[keyof typeof EV];
+export type BusEventName = (typeof EV)[keyof typeof EV]
