@@ -58,7 +58,7 @@ JSON 对象，`mac` 为必填字段；设备只执行 `mac` 与自己一致的�
 | `time` | int | 手动校时：请求时写 `-1`，设备回报校时结果时间戳 |
 | `cmd` | string | 指令，目前仅 `restart`（重启设备） |
 | `ota_progress` | int | 固件升级进度：`0`–`99` 进行中，`≥100` 成功，`-1` 失败 |
-| `setting` | object | 批量设置，见下 |
+| `setting` | object | 批量设置，见下（设备收到 `setting` 后会回一条同结构的回包，见 §7） |
 | `task_0` … `task_4` | object | 5 组定时任务，见下 |
 
 ### `setting` 子对象
@@ -69,7 +69,9 @@ JSON 对象，`mac` 为必填字段；设备只执行 `mac` 与自己一致的�
 | `ota` | 设置固件下载地址（以 `http` 开头的 URL），设备自行下载升级 |
 | `mqtt_uri` / `mqtt_port` / `mqtt_user` / `mqtt_password` | 设置设备要连接的 MQTT 服务器 |
 
-> 说明：设备**不会**回报自己当前保存的 MQTT 服务器配置，只能下发。
+> 说明：设备收到含 `mqtt_uri` 的 `setting` 后会回一条同样结构的回包（`mqtt_uri`/`mqtt_port`/`mqtt_user`），
+> 客户端据此确认设备实际保存的配置——原版 App 就是靠这条回包弹「已设置…mqtt服务器」的 Toast。
+> 回包不保证带 `mqtt_password`，本工具也**不解析、不落库、不回传**该字段（`state.mqttSetting` 只有三个字段）。
 
 ## 5. 定时任务
 

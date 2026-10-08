@@ -11,6 +11,7 @@ import { EV, bus } from '../core/bus.ts';
 import type { AppCtx } from '../core/context.ts';
 import { buildStatus, sendCommand } from '../core/status.ts';
 import { buildMqttSyncPayload, isNewerVersion, parseMqttUri, validateCommand } from '../device/zm1.ts';
+import { buildHaConfig, haConfigFileName } from '../device/ha-config.ts';
 
 function httpError(statusCode: number, message: string): Error & { statusCode: number } {
   return Object.assign(new Error(message), { statusCode });
@@ -181,6 +182,20 @@ export function registerRoutes(app: FastifyInstance, ctx: AppCtx): void {
       }
     }
     return { hasUpdate, current, tag_name: tagName, title, message, ota };
+  });
+
+  /**
+   * Home Assistant 的 MQTT 配置片段（纯文本生成，不发任何报文给设备）。
+   * 对应 PC 端参考实现的「生成 HA 配置」按钮。
+   */
+  app.get('/api/devices/:mac/ha-config', async (req) => {
+    const { mac } = req.params as { mac: string };
+    const device = ctx.registry.find(mac.toLowerCase());
+    if (!device) throw httpError(404, '设备不存在');
+    return {
+      file_name: haConfigFileName(device.mac),
+      yaml: buildHaConfig({ mac: device.mac, name: device.name }),
+    };
   });
 
   // ---- 全局设置 ----

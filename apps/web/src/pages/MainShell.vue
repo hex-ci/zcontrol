@@ -10,7 +10,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { showConfirmDialog, showToast } from 'vant';
+import { showConfirmDialog, showDialog, showToast } from 'vant';
 import AppNavBar from '../components/AppNavBar.vue';
 import DeviceDrawer from '../components/DeviceDrawer.vue';
 import DeviceM1Page from './DeviceM1Page.vue';
@@ -55,7 +55,15 @@ function openDoc() {
 /** 云同步：把本机 MQTT 配置下发给设备 */
 async function cloudSync() {
   const d = current.value;
-  if (!d) return;
+  if (!d) {
+    // 对齐原版：设备列表为空时弹框提示，而不是静默返回
+    await showDialog({
+      title: '设备列表为空',
+      message: '请先添加设备',
+      confirmButtonText: '确定',
+    });
+    return;
+  }
   const uri = app.settings?.mqtt_uri ?? '';
   if (!uri) {
     await showConfirmDialog({

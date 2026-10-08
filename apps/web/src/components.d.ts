@@ -40,6 +40,7 @@ declare module 'vue' {
     VanTabs: typeof import('vant/es')['Tabs']
     VanTag: typeof import('vant/es')['Tag']
     VanTimePicker: typeof import('vant/es')['TimePicker']
+    Zm1HaConfigDialog: typeof import('./components/Zm1HaConfigDialog.vue')['default']
     Zm1SettingOtaProgress: typeof import('./components/Zm1SettingOtaProgress.vue')['default']
     Zm1SettingTextDialog: typeof import('./components/Zm1SettingTextDialog.vue')['default']
     Zm1SettingZonePicker: typeof import('./components/Zm1SettingZonePicker.vue')['default']

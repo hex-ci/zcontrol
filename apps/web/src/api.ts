@@ -9,6 +9,13 @@ export interface Zm1Task {
   on: number;
 }
 
+/** 设备回包的 MQTT 配置（云同步后设备回报的 setting 报文，密码不下发/不回传） */
+export interface Zm1MqttSetting {
+  mqtt_uri: string;
+  mqtt_port: number;
+  mqtt_user: string;
+}
+
 export interface M1State {
   PM25?: number;
   formaldehyde?: number;
@@ -21,6 +28,8 @@ export interface M1State {
   ssid?: string;
   zone?: number;
   ota_progress?: number;
+  /** 设备当前保存的 MQTT 服务器（只有收到过 setting 回包才有） */
+  mqttSetting?: Zm1MqttSetting;
   tasks?: (Zm1Task | null)[];
   lastTopic?: 'state' | 'sensor' | null;
 }
@@ -79,6 +88,13 @@ export interface OtaCheckResult {
   title: string;
   message: string;
   ota: string | null;
+}
+
+export interface HaConfigResult {
+  /** 下载用的文件名 */
+  file_name: string;
+  /** 可直接粘贴进 configuration.yaml 的 YAML 文本 */
+  yaml: string;
 }
 
 export interface ExportPayload {
@@ -167,4 +183,5 @@ export const api = {
     req<ImportResult>('/devices/import', { method: 'POST', ...json({ device }) }),
 
   otaCheck: (mac: string) => req<OtaCheckResult>(`/devices/${mac}/ota/check`),
+  haConfig: (mac: string) => req<HaConfigResult>(`/devices/${mac}/ha-config`),
 };

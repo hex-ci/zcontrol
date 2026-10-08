@@ -168,6 +168,35 @@ test.describe('全栈联调（真后端 + 本机 broker + 假设备）', () => {
     expect(JSON.parse(payload).setting.mqtt_port).toBe(1883);
   });
 
+  test('云同步确认：设备回包后界面弹出它实际保存的 MQTT 服务器（真后端 + 假设备）', async ({ page }) => {
+    // 顺序要紧：先让页面连上 WS，再触发回包，否则 Toast 在页面打开前就弹完（5 秒）了。
+    await page.goto('/');
+    await expect(page.getByTestId('nav-sync')).toBeVisible();
+
+    // 假设备收到含 mqtt_uri 的 setting 后会回一条同结构的报文（见 helpers/fake-zm1.mjs）。
+    // 这里经 MQTT 下发（UDP 云同步到不了只订阅 MQTT 的假设备），走的是同一条确认链路：
+    // 设备回包 → 后端解析进快照 → WS 推送 → 前端弹 Toast。
+    const sent = await api(`/devices/${FAKE_MAC}/cmd`, {
+      method: 'POST',
+      body: JSON.stringify({
+        cmd: { setting: { mqtt_uri: '127.0.0.1', mqtt_port: 1883, mqtt_user: 'z', mqtt_password: 'p' } },
+      }),
+    });
+    expect(sent.status).toBe(200);
+
+    await expect(page.locator('.van-toast')).toContainText('已设置"', { timeout: 30_000 });
+    await expect(page.locator('.van-toast')).toContainText('127.0.0.1:1883');
+
+    // 后端快照里也确实记下了（设备设置页据此常显）
+    const st = (await api(`/devices/${FAKE_MAC}/state`)).data as {
+      state?: { mqttSetting?: { mqtt_uri?: string; mqtt_port?: number; mqtt_user?: string } };
+    };
+    expect(st?.state?.mqttSetting).toEqual({ mqtt_uri: '127.0.0.1', mqtt_port: 1883, mqtt_user: 'z' });
+
+    await page.goto(`/#/device/${FAKE_MAC}/settings`);
+    await expect(page.getByTestId('device-mqtt-setting')).toContainText('127.0.0.1:1883');
+  });
+
   test('局域网扫描：点「开始扫描」后设备实时出现在添加页（无需刷新页面）', async ({ page }) => {
     // 先停掉 MQTT 假设备：它在设备表里、会周期性上报，从而触发一次附带的 REST 刷新，
     // 会掩盖「扫描结果没有实时推送」这一类缺陷。只有它静默，本用例才真的能守住这条链。

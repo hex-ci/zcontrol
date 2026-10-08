@@ -23,6 +23,9 @@ interface M1State {
   ssid?: string;            // 连接的热点
   zone?: number;            // 时区分钟偏移（-720..840，中国 480）
   ota_progress?: number;    // 0..99 进行中；>=100 成功；-1 失败
+  mqttSetting?: {           // 设备当前保存的 MQTT 服务器（云同步后设备回包才有；密码不解析）
+    mqtt_uri: string; mqtt_port: number; mqtt_user: string;
+  };
   tasks?: (Zm1Task | null)[]; // 长度 5，未获取为 null
   lastTopic?: 'state' | 'sensor' | null;
 }
@@ -74,6 +77,7 @@ interface AppSettings {
 | GET | `/devices/export` | — | `{ device: { name, mac, type, type_name }[] }` |
 | POST | `/devices/import` | `{ device: { name, mac, type }[] }` | `{ total: number, added: number, dup: number, invalid: number }` |
 | GET | `/devices/:mac/ota/check` | — | `{ hasUpdate: boolean, current: string, tag_name: string, title: string, message: string, ota: string \| null }` |
+| GET | `/devices/:mac/ha-config` | — | `{ file_name: string, yaml: string }`（Home Assistant 的 MQTT 配置片段，纯文本生成、不下发） |
 
 ### 2.1 `/devices/:mac/cmd` 的 `cmd` 取值（后端会注入 `mac` 字段后下发）
 

@@ -3,6 +3,7 @@ import {
   buildCommand,
   buildMqttSyncPayload,
   isNewerVersion,
+  parseMqttSetting,
   parseMqttUri,
   parseState,
   parseTask,
@@ -59,6 +60,39 @@ describe('parseState（字段解析）', () => {
       brightness: 3,
       on: 4,
     });
+  });
+});
+
+describe('parseMqttSetting（云同步回包）', () => {
+  it('解析设备回包的 MQTT 配置，密码字段不解析', () => {
+    const { state } = parseState({
+      name: 'zM1_1234',
+      mac: MAC,
+      setting: {
+        mqtt_uri: '192.168.1.10',
+        mqtt_port: 1883,
+        mqtt_user: 'z',
+        mqtt_password: 'secret',
+      },
+    });
+    expect(state.mqttSetting).toEqual({ mqtt_uri: '192.168.1.10', mqtt_port: 1883, mqtt_user: 'z' });
+    expect(JSON.stringify(state)).not.toContain('secret');
+  });
+
+  it('空配置回包（即清空设备上的 MQTT 设置）照样认得', () => {
+    expect(parseMqttSetting({ mqtt_uri: '', mqtt_port: 0, mqtt_user: '' })).toEqual({
+      mqtt_uri: '',
+      mqtt_port: 0,
+      mqtt_user: '',
+    });
+  });
+
+  it('没有 mqtt_uri 的 setting（名称/OTA 等）不产生 mqttSetting', () => {
+    expect(parseMqttSetting({ ota: 'https://example.com/ota.bin' })).toBeNull();
+    expect(parseMqttSetting({ name: '测试检测仪' })).toBeNull();
+    expect(parseMqttSetting({})).toBeNull();
+    expect(parseMqttSetting('x')).toBeNull();
+    expect(parseState({ mac: MAC, setting: { name: '测试检测仪' } }).state.mqttSetting).toBeUndefined();
   });
 });
 

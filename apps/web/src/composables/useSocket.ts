@@ -1,4 +1,5 @@
 import type { WsEvent } from '../api';
+import { notifyMqttSyncAck } from './mqttSyncAck';
 import { useAppStore } from '../stores/app';
 import { useDeviceStore } from '../stores/devices';
 import { useLogStore } from '../stores/log';
@@ -55,6 +56,8 @@ function dispatch(ev: WsEvent) {
       const text =
         typeof payload === 'string' ? payload : JSON.stringify(payload).replace(/\\/g, '');
       log.push(mac, 'recv', `接收${source}:${text}`, ev.data.ts);
+      // 设备回包确认：云同步下发的 MQTT 配置（原版在此弹 Toast 显示设备实际保存的值）
+      if (typeof payload === 'object' && payload !== null) notifyMqttSyncAck(mac, payload);
       break;
     }
     case 'sent': {

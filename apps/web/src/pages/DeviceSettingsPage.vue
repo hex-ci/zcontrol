@@ -15,6 +15,8 @@ import Zm1SettingZonePicker, {
 } from '../components/Zm1SettingZonePicker.vue';
 import Zm1SettingTextDialog from '../components/Zm1SettingTextDialog.vue';
 import Zm1SettingOtaProgress from '../components/Zm1SettingOtaProgress.vue';
+import Zm1HaConfigDialog from '../components/Zm1HaConfigDialog.vue';
+import { copyText } from '../composables/clipboard';
 import { api } from '../api';
 import { useAppStore } from '../stores/app';
 import { useDeviceStore } from '../stores/devices';
@@ -30,6 +32,17 @@ const state = computed(() => device.value?.state ?? {});
 
 const deviceName = computed(() => device.value?.name ?? '');
 const ssid = computed(() => state.value.ssid ?? '');
+/** 设备当前保存的 MQTT 服务器：只有收到过云同步回包（setting 报文）才有值 */
+const mqttSetting = computed(() => state.value.mqttSetting ?? null);
+const mqttSettingText = computed(() => {
+  const s = mqttSetting.value;
+  return s ? `${s.mqtt_uri}:${s.mqtt_port}` : '';
+});
+const mqttSettingUser = computed(() => {
+  const s = mqttSetting.value;
+  if (!s) return '未获取到设备保存的配置,可回主页点右上角云图标下发';
+  return s.mqtt_user ? `用户:${s.mqtt_user}` : '未设置用户名';
+});
 const version = computed(() => state.value.version ?? '');
 const intervalText = computed(() =>
   state.value.interval == null ? '' : String(state.value.interval),
@@ -156,30 +169,7 @@ async function onNameConfirm(v: string): Promise<void> {
 
 //region MAC地址(点击复制)
 async function copyMac(): Promise<void> {
-  const text = mac.value;
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-    } else {
-      throw new Error('clipboard unavailable');
-    }
-    showToast('已复制mac地址');
-  } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-      showToast('已复制mac地址');
-    } catch {
-      showToast('复制mac地址失败');
-    }
-    document.body.removeChild(ta);
-  }
+  showToast((await copyText(mac.value)) ? '已复制mac地址' : '复制mac地址失败');
 }
 //endregion
 
@@ -212,6 +202,23 @@ async function onIntervalConfirm(v: string): Promise<void> {
 //region 重新获取数据
 async function regetData(): Promise<void> {
   await queryDeviceData();
+}
+//endregion
+
+//region Home Assistant 配置（纯文本生成，不发任何报文）
+const haShow = ref(false);
+const haYaml = ref('');
+const haFileName = ref('');
+
+async function onHaConfig(): Promise<void> {
+  try {
+    const r = await api.haConfig(mac.value);
+    haYaml.value = r.yaml;
+    haFileName.value = r.file_name;
+    haShow.value = true;
+  } catch (e) {
+    showToast(String((e as Error).message));
+  }
 }
 //endregion
 
@@ -428,6 +435,14 @@ function goBack(): void {
         <!-- 连接的热点 -->
         <van-cell title="连接的热点" :value="valueOrLoading(ssid)" />
 
+        <!-- 设备当前保存的 MQTT 服务器（云同步后由设备回包确认） -->
+        <van-cell
+          title="设备MQTT服务器"
+          :label="mqttSettingUser"
+          :value="mqttSettingText"
+          data-testid="device-mqtt-setting"
+        />
+
         <!-- 时区 -->
         <van-cell title="时区" :value="valueOrLoading(zoneText)" is-link @click="zoneShow = true" />
 
@@ -470,6 +485,17 @@ function goBack(): void {
           label="获取版本/激活状态失败时点此重试"
           is-link
           @click="regetData"
+        />
+      </van-cell-group>
+
+      <!-- Home Assistant：生成本机可粘贴的 MQTT 配置（只输出文本） -->
+      <van-cell-group inset title="Home Assistant" class="mt-3">
+        <van-cell
+          title="生成 MQTT 配置"
+          label="输出 YAML(4 个传感器 + 屏幕亮度)，粘贴进 configuration.yaml"
+          is-link
+          data-testid="ha-config-entry"
+          @click="onHaConfig"
         />
       </van-cell-group>
     </div>
@@ -517,5 +543,12 @@ function goBack(): void {
 
     <!-- OTA 进度 -->
     <Zm1SettingOtaProgress v-model:show="otaShow" :progress="otaProgress" />
+
+    <!-- Home Assistant 配置（YAML 文本） -->
+    <Zm1HaConfigDialog
+      v-model:show="haShow"
+      :yaml="haYaml"
+      :file-name="haFileName"
+    />
   </div>
 </template>

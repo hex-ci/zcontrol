@@ -130,6 +130,30 @@ describe('后端接口（关键行为）', () => {
     expect(built.ctx.udp.sent.at(-1)?.payload).toBe(res.json().sent.payload);
   });
 
+  it('云同步后设备回包 setting 写进快照（界面据此确认设备实际保存的配置）', async () => {
+    built.ctx.dispatcher.handleMqtt(
+      `device/zm1/${MAC}/state`,
+      JSON.stringify({
+        name: 'zM1_1',
+        mac: MAC,
+        setting: {
+          mqtt_uri: '192.168.1.10',
+          mqtt_port: 1883,
+          mqtt_user: 'z',
+          mqtt_password: '123456',
+        },
+      }),
+    );
+    const device = (await get('/api/devices')).json().devices.find((d: { mac: string }) => d.mac === MAC);
+    expect(device.state.mqttSetting).toEqual({
+      mqtt_uri: '192.168.1.10',
+      mqtt_port: 1883,
+      mqtt_user: 'z',
+    });
+    // 密码既不落进快照、也不随接口回传
+    expect(JSON.stringify(device)).not.toContain('123456');
+  });
+
   it('设备上报：availability 置在线、sensor 合并进快照、任务合并', async () => {
     built.ctx.dispatcher.handleMqtt(`device/zm1/${MAC}/availability`, '1');
     built.ctx.dispatcher.handleMqtt(
@@ -203,6 +227,23 @@ describe('后端接口（关键行为）', () => {
       sockets.delete(fakeWs);
       await post('/api/discovery/scan', { action: 'stop' });
     }
+  });
+
+  it('HA 配置：按设备名与 mac 生成，404 兜底', async () => {
+    const res = await get(`/api/devices/${MAC}/ha-config`);
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { file_name: string; yaml: string };
+    expect(body.file_name).toBe(`zm1_${MAC}_ha.yaml`);
+    expect(body.yaml).toContain('mqtt:');
+    expect(body.yaml).toContain(`device/zm1/${MAC}/sensor`);
+    // 实体名用的是设备表里的当前名称
+    const device = (await get('/api/devices'))
+      .json()
+      .devices.find((d: { mac: string }) => d.mac === MAC);
+    expect(body.yaml).toContain(device.name);
+
+    const missing = await get('/api/devices/000000000000/ha-config');
+    expect(missing.statusCode).toBe(404);
   });
 
   it('导入导出：非法条目跳过并计数', async () => {

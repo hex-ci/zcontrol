@@ -10,6 +10,16 @@ export interface Zm1Task {
   on: number;
 }
 
+/**
+ * 设备回包的 MQTT 配置（云同步下发后设备回报的 setting 报文）。
+ * 密码字段一律不解析、不落库、不回传。
+ */
+export interface Zm1MqttSetting {
+  mqtt_uri: string;
+  mqtt_port: number;
+  mqtt_user: string;
+}
+
 export interface M1State {
   PM25?: number;
   formaldehyde?: number;
@@ -22,6 +32,8 @@ export interface M1State {
   ssid?: string;
   zone?: number;
   ota_progress?: number;
+  /** 设备当前保存的 MQTT 服务器（只有收到过 setting 回包才有） */
+  mqttSetting?: Zm1MqttSetting;
   tasks?: (Zm1Task | null)[];
   lastTopic?: 'state' | 'sensor' | null;
 }
@@ -58,6 +70,18 @@ export function parseTask(v: unknown): Zm1Task | null {
     return null;
   }
   return { hour, minute, brightness, on };
+}
+
+/** 解析设备回包的 `setting` 里的 MQTT 配置（只有带 mqtt_uri 才认，密码字段忽略） */
+export function parseMqttSetting(v: unknown): Zm1MqttSetting | null {
+  if (!isPlainObject(v)) return null;
+  const uri = toStr(v.mqtt_uri);
+  if (uri === undefined) return null;
+  return {
+    mqtt_uri: uri,
+    mqtt_port: toNum(v.mqtt_port) ?? 0,
+    mqtt_user: toStr(v.mqtt_user) ?? '',
+  };
 }
 
 /** 解析设备上报的 JSON（state / sensor 走同一段逻辑） */
@@ -100,6 +124,9 @@ export function parseState(payload: Record<string, unknown>): {
 
   const ssid = toStr(payload.ssid);
   if (ssid !== undefined) state.ssid = ssid;
+
+  const mqttSetting = parseMqttSetting(payload.setting);
+  if (mqttSetting) state.mqttSetting = mqttSetting;
 
   for (let i = 0; i < TASK_COUNT; i++) {
     const t = parseTask(payload[`task_${i}`]);
