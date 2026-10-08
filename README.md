@@ -139,7 +139,3 @@ docs/
 ## 许可
 
 [MIT](LICENSE)
-
-## 作者
-
-Hex · <https://github.com/hex-ci>
