@@ -56,6 +56,8 @@ interface Harness {
   settingsPuts: { always_UDP?: boolean }[]
   /** 通过 mock 的 /ws 推送 devices 事件（模拟设备回包，驱动响应式回显） */
   pushState: (patch: Record<string, unknown>) => void
+  /** 通过 mock 的 /ws 推送 status 事件（模拟 MQTT 连接状态变化） */
+  pushStatus: (mqttConnected: boolean) => void
 }
 
 async function setup(
@@ -72,6 +74,21 @@ async function setup(
         JSON.stringify({
           type: 'devices',
           data: { devices: [{ ...DEVICE, state: { ...BASE_STATE, ...patch } }] },
+        }),
+      )
+    },
+    pushStatus: (mqttConnected) => {
+      socket?.send(
+        JSON.stringify({
+          type: 'status',
+          data: {
+            mqtt: { connected: mqttConnected, uri: '127.0.0.1:1883', error: null },
+            udp: { listening: true, port: 10181 },
+            scan: { active: false },
+            version: '1.0.0',
+            versionName: '1.0.0',
+            localIps: ['192.168.1.10'],
+          },
         }),
       )
     },
@@ -207,6 +224,28 @@ test('进页面自动请求设备数据：等待期间显示加载中，设备�
   await expect(cell('连接的热点')).toContainText('MyWiFi')
   await expect(cell('时区')).toContainText('UTC+08:00')
   await expect(cell('上报频率(秒)')).toContainText('60')
+})
+
+test('重新获取数据：MQTT 连接状态反复变化不得重置兜底计时（此前会永远卡在加载中）', async ({ page }) => {
+  // 真机症状：点「重新获取数据」后设备不回这 4 个字段，若 MQTT 恰好持续抖动（断线重连），
+  // 每次状态变化都重开 6 秒兜底 → 加载态永不结束，看起来像请求卡死。
+  const device = { ...DEVICE, state: {} }
+  const h = await setup(page, { device })
+  await page.goto(`/#/device/${MAC}/settings`)
+  await expect(page.getByText('设备设置').first()).toBeVisible()
+
+  await expect(page.getByText('加载中')).toHaveCount(4)
+  await page.locator('.van-cell').filter({ hasText: '重新获取数据' }).first().click()
+
+  // 持续抖动超过兜底窗口（6s）：每 800ms 切一次，共 9 次 ≈ 7.2s
+  for (let i = 0; i < 9; i++) {
+    h.pushStatus(i % 2 === 0)
+    await page.waitForTimeout(800)
+  }
+
+  // 兜底必须已到期：加载态结束。若每次状态变化都重置计时器，这里会一直停在 4
+  await expect(page.getByText('加载中')).toHaveCount(0, { timeout: 2000 })
+  await expect(page.getByText('未获取到设备数据,请点「重新获取数据」重试')).toBeVisible()
 })
 
 test('时区选择器 33 项，选 UTC+08:00 下发 zone 与 time', async ({ page }) => {

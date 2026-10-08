@@ -77,12 +77,20 @@ function clearLoadTimer(): void {
 /**
  * 请求设备当前数据：四个字段全为 null 表示「只查询、不改值」，设备会回报当前值。
  * 缺数据的字段先显示加载中；等到这些字段回来、或超时（提示手动重试）后结束。
+ *
+ * @param startLoading 是否由本次调用点亮/重开加载态。只有首次进页面与用户主动重试传 true；
+ *   MQTT 连接状态变化触发的自动查询传 false——否则连接抖动会不停重置兜底计时器，
+ *   「加载中」永远不结束（真机上表现为点击后一直卡住）。
  */
-async function queryDeviceData(): Promise<void> {
-  clearLoadTimer()
+async function queryDeviceData(startLoading = false): Promise<void> {
   pendingFields = missingFields()
-  loading.value = pendingFields.length > 0
-  if (loading.value) {
+  if (pendingFields.length === 0) {
+    clearLoadTimer()
+    loading.value = false
+  }
+  else if (startLoading) {
+    loading.value = true
+    clearLoadTimer()
     loadTimer = window.setTimeout(() => {
       loadTimer = null
       loading.value = false
@@ -143,7 +151,7 @@ onMounted(async () => {
   catch {
     /* 忽略读取失败，保持默认 false */
   }
-  void queryDeviceData()
+  void queryDeviceData(true)
 })
 
 async function onUdpChange(v: boolean): Promise<void> {
@@ -205,7 +213,8 @@ async function onIntervalConfirm(v: string): Promise<void> {
 
 // region 重新获取数据
 async function regetData(): Promise<void> {
-  await queryDeviceData()
+  // 用户主动重试：重开兜底计时，让这次操作有完整的等待时间
+  await queryDeviceData(true)
 }
 // endregion
 
