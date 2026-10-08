@@ -9,6 +9,10 @@
  *
  * 可点区域说明：Vant 导航栏左/右区自带 16px 内边距，把 handler 挂到「整个区域」而不是 20px 图标上，
  * 否则点图标周围有按压反馈但不触发（移动端手指命中率很低）。
+ *
+ * 图标名必须在 Vant 4 的图标表里存在：曾用 `cloud-o`（Vant 没有这个图标），
+ * 结果按钮变成 16px 宽的空白区域、用户完全看不到入口（靠 e2e 的图标字形守卫兜住）。
+ * 三个动作都只放图标、不加文字，保持顶栏一致；含义靠 title / aria-label。
  */
 defineProps<{
   title: string;
@@ -51,14 +55,17 @@ const emit = defineEmits<{
         >
           <van-icon name="question-o" size="18" />
         </button>
+        <!-- 云同步：图标名必须在 Vant 图标表里存在（曾用 cloud-o → 画不出字形，按钮是 16px 的空白区） -->
         <button
           v-if="sync"
           type="button"
           class="flex items-center px-2 py-2"
           data-testid="nav-sync"
+          title="云同步：把本机 MQTT 服务器配置下发给设备"
+          aria-label="云同步：把本机 MQTT 服务器配置下发给设备"
           @click="emit('sync')"
         >
-          <van-icon name="cloud-o" size="18" />
+          <van-icon name="exchange" size="18" />
         </button>
         <button
           v-if="edit"

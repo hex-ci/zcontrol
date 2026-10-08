@@ -40,7 +40,7 @@ const mqttSettingText = computed(() => {
 });
 const mqttSettingUser = computed(() => {
   const s = mqttSetting.value;
-  if (!s) return '未获取到设备保存的配置,可回主页点右上角云图标下发';
+  if (!s) return '未获取到设备保存的配置,可回主页点右上角「云同步」下发';
   return s.mqtt_user ? `用户:${s.mqtt_user}` : '未设置用户名';
 });
 const version = computed(() => state.value.version ?? '');

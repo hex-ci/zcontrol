@@ -1,10 +1,10 @@
 import { expect, test, type Page, type WebSocketRoute } from '@playwright/test';
 
 /**
- * 云同步（右上角云图标）相关 e2e：
- *   1) 点云图标下发本机 MQTT 配置；
+ * 云同步（主页顶栏右侧的 ⇄ 图标）相关 e2e：
+ *   1) 点该入口下发本机 MQTT 配置；
  *   2) 设备回包 setting → 弹 Toast 确认设备实际保存的配置（原版 DeviceFragment 的行为）；
- *   3) 设备列表为空时点云图标 → 弹框提示而不是静默返回；
+ *   3) 设备列表为空时点该入口 → 弹框提示而不是静默返回；
  *   4) 设备设置页显示设备当前保存的 MQTT 服务器。
  *
  * 安全：所有 /api/** 用 page.route 拦截、WebSocket 用 routeWebSocket mock，
@@ -90,11 +90,11 @@ async function openApp(page: Page, hash = '/'): Promise<void> {
   }
 }
 
-test('云同步：点云图标下发配置，设备回包 setting 后弹确认', async ({ page }) => {
+test('云同步：点顶栏入口下发配置，设备回包 setting 后弹确认', async ({ page }) => {
   const h = await mockBackend(page, { brightness: 3, version: 'v1.0.0' });
   await openApp(page);
 
-  // 1) 点云图标 → 调一次云同步接口，并提示已发送
+  // 1) 点云同步入口 → 调一次云同步接口，并提示已发送
   await page.getByTestId('nav-sync').click();
   await expect.poll(() => h.syncPosts.length).toBe(1);
   expect(h.syncPosts[0]).toBe(`/api/settings/mqtt/sync/${MAC}`);
