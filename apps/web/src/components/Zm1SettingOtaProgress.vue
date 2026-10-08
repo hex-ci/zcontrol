@@ -17,7 +17,7 @@ const emit = defineEmits<{ 'update:show': [boolean] }>();
     @update:show="emit('update:show', $event)"
   >
     <div class="whitespace-pre-line px-5 pt-6 pb-4 text-center text-sm leading-7 text-gray-700">
-      {{ '正在获取最新固件版本,请稍后....\n' + '进度:' + progress + '%' }}
+      {{ '正在获取最新固件版本,请稍后....\n' + '进度: ' + progress + '%' }}
     </div>
     <div class="border-t border-gray-100">
       <van-button

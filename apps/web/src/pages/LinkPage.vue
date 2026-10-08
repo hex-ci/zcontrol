@@ -9,9 +9,9 @@ const router = useRouter();
 
 /** 配网步骤 */
 const steps = [
-  '1.长按侧面按键15秒直到屏幕显示全部点亮.(第一次配网不需要此操作)',
-  '2. 手机连接设备热点zM1_XXXX,打开网址:192.168.0.1,输入wifi名称(必须为2.4G)及密码点击下一步,提示配置成功.',
-  '3. 在路由器管理中确认设备连上wifi,名称为zM1_XXXX.',
+  '1.长按侧面按键 15 秒直到屏幕显示全部点亮.(第一次配网不需要此操作)',
+  '2. 手机连接设备热点 zM1_XXXX,打开网址: 192.168.0.1,输入 WIFI 名称(必须为 2.4G)及密码点击下一步,提示配置成功.',
+  '3. 在路由器管理中确认设备连上 WIFI,名称为 zM1_XXXX.',
   '4. 搜寻局域网设备添加设备至本工具.',
 ];
 
@@ -22,7 +22,7 @@ function back() {
 
 <template>
   <div class="flex min-h-full flex-col bg-white">
-    <AppNavBar title="zM1配网" back @back="back" />
+    <AppNavBar title="zM1 配网" back @back="back" />
 
     <div class="flex flex-col gap-4 p-4 text-sm leading-6 text-gray-800" data-testid="link-steps">
       <p v-for="(s, i) in steps" :key="i" class="whitespace-pre-wrap">{{ s }}</p>

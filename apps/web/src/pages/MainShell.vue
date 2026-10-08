@@ -94,8 +94,8 @@ async function cloudSync() {
   const uri = app.settings?.mqtt_uri ?? '';
   if (!uri) {
     await showConfirmDialog({
-      title: '未设置MQTT服务器',
-      message: '继续会发送空数据,将删除固件的MQTT服务器设置!继续?',
+      title: '未设置 MQTT 服务器',
+      message: '继续会发送空数据,将删除固件的 MQTT 服务器设置!继续?',
       confirmButtonText: '继续',
       cancelButtonText: '取消',
     });
@@ -106,8 +106,8 @@ async function cloudSync() {
       await app.syncMqtt(d.mac);
       showToast(
         attempt === 1
-          ? `已发送MQTT配置到"${d.name}"`
-          : `已重发(${attempt})到"${d.name}"`,
+          ? `已发送 MQTT 配置到 "${d.name}"`
+          : `已重发(${attempt})到 "${d.name}"`,
       );
 
       // 收到回包时 mqttSyncAck 会弹「已设置...mqtt服务器」，这里就不用再提示了
@@ -117,9 +117,9 @@ async function cloudSync() {
         await showDialog({
           title: '未收到设备回包',
           message:
-            `已向"${d.name}"下发 ${attempt} 次 MQTT 配置，但都没等到设备回包。\n` +
+            `已向 "${d.name}" 下发 ${attempt} 次 MQTT 配置，但都没等到设备回包。\n` +
             '可能原因：广播丢包、设备正忙、或设备与本机不在同一网段。\n' +
-            '可稍后在「设备设置 → 设备MQTT服务器」查看设备上的实际配置。',
+            '可稍后在「设备设置 → 设备 MQTT 服务器」查看设备上的实际配置。',
           confirmButtonText: '知道了',
         });
         return;
@@ -129,7 +129,7 @@ async function cloudSync() {
         await showConfirmDialog({
           title: '未收到设备回包',
           message:
-            `已向"${d.name}"下发 MQTT 配置，但 ${ACK_TIMEOUT_MS / 1000} 秒内没等到设备回包。\n` +
+            `已向 "${d.name}" 下发 MQTT 配置，但 ${ACK_TIMEOUT_MS / 1000} 秒内没等到设备回包。\n` +
             '多半是广播丢包或设备没吃到这一包，点「重发」再试一次。',
           confirmButtonText: '重发',
           cancelButtonText: '取消',

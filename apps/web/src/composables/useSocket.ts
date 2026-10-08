@@ -33,10 +33,10 @@ function dispatch(ev: WsEvent) {
       app.setScanning(ev.data.scan.active);
       if (prev !== ev.data.mqtt.connected) {
         if (ev.data.mqtt.connected) {
-          for (const d of device.devices) log.push(d.mac, 'sys', '本工具已连接mqtt服务器');
+          for (const d of device.devices) log.push(d.mac, 'sys', '本工具已连接 MQTT 服务器');
         } else {
           const err = ev.data.mqtt.error ? `:${ev.data.mqtt.error}` : '';
-          for (const d of device.devices) log.push(d.mac, 'sys', `本工具已断开mqtt服务器${err}`);
+          for (const d of device.devices) log.push(d.mac, 'sys', `本工具已断开 MQTT 服务器 ${err}`);
         }
       }
       break;
@@ -55,13 +55,13 @@ function dispatch(ev: WsEvent) {
       const { mac, source, payload } = ev.data;
       const text =
         typeof payload === 'string' ? payload : JSON.stringify(payload).replace(/\\/g, '');
-      log.push(mac, 'recv', `接收${source}:${text}`, ev.data.ts);
+      log.push(mac, 'recv', `接收 ${source}: ${text}`, ev.data.ts);
       // 设备回包确认：云同步下发的 MQTT 配置（原版在此弹 Toast 显示设备实际保存的值）
       if (typeof payload === 'object' && payload !== null) notifyMqttSyncAck(mac, payload);
       break;
     }
     case 'sent': {
-      log.push(ev.data.mac, 'send', `发送${ev.data.source}:${ev.data.payload}`, ev.data.ts);
+      log.push(ev.data.mac, 'send', `发送 ${ev.data.source}: ${ev.data.payload}`, ev.data.ts);
       break;
     }
   }

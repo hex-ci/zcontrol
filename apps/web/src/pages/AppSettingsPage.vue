@@ -84,7 +84,7 @@ function normalizeMqttUri(raw: string): { ok: boolean; value: string } {
 async function save() {
   const r = normalizeMqttUri(mqttUri.value);
   if (!r.ok) {
-    showToast('保存失败!格式错误.\n格式:地址:端口\n如192.168.1.1:1883');
+    showToast('保存失败!格式错误.\n格式:地址:端口\n如 192.168.1.1:1883');
     return;
   }
   const clientChanged = mqttClientId.value.trim() !== (app.settings?.mqtt_clientid ?? '');
@@ -101,7 +101,7 @@ async function save() {
     mqttUri.value = r.value;
     mqttPassword.value = '';
     if (clientChanged) {
-      showToast('注意:同个MQTT服务器内,ClientID必须唯一,否则将导致设备掉线');
+      showToast('注意:同个 MQTT 服务器内,ClientID 必须唯一,否则将导致设备掉线');
     } else {
       showToast('已保存');
     }
@@ -161,12 +161,12 @@ async function doImport() {
   try {
     parsed = JSON.parse(importText.value);
   } catch {
-    showDialog({ title: '导入失败', message: 'json格数错误!请确认导入内容格式正确!' });
+    showDialog({ title: '导入失败', message: 'JSON 格数错误!请确认导入内容格式正确!' });
     return;
   }
   const arr = (parsed as { device?: unknown })?.device;
   if (!Array.isArray(arr)) {
-    showDialog({ title: '导入失败', message: 'json格数错误!请确认导入内容格式正确!' });
+    showDialog({ title: '导入失败', message: 'JSON 格数错误!请确认导入内容格式正确!' });
     return;
   }
   const list: { name: string; mac: string; type: number }[] = [];
@@ -188,11 +188,11 @@ async function doImport() {
     if (r.total === 0) {
       showDialog({ title: '导入失败', message: '未检测到有效设备!' });
     } else if (r.added === 0) {
-      showDialog({ title: '导入设备重复!', message: `导入设备${r.total}个,无新设备!` });
+      showDialog({ title: '导入设备重复!', message: `导入设备 ${r.total} 个,无新设备!` });
     } else {
       showDialog({
         title: '导入设备成功!',
-        message: `导入设备${r.total}个,重复设备${r.dup}个\n实际导入设备${r.added}个`,
+        message: `导入设备 ${r.total} 个,重复设备 ${r.dup} 个\n实际导入设备 ${r.added} 个`,
       });
     }
     importText.value = '';
@@ -215,22 +215,22 @@ function back() {
 
     <!-- 连接状态 -->
     <van-cell-group inset class="mt-3" title="连接状态">
-      <van-cell title="MQTT连接" :value="mqttState" :label="mqtt?.uri || '未设置服务器'" data-testid="mqtt-state" />
-      <van-cell title="UDP监听" :value="udpState" data-testid="udp-state" />
+      <van-cell title="MQTT 连接" :value="mqttState" :label="mqtt?.uri || '未设置服务器'" data-testid="mqtt-state" />
+      <van-cell title="UDP 监听" :value="udpState" data-testid="udp-state" />
     </van-cell-group>
 
     <!-- MQTT服务器设置（res/xml/setting.xml） -->
-    <van-cell-group inset class="mt-3" title="MQTT服务器设置">
+    <van-cell-group inset class="mt-3" title="MQTT 服务器设置">
       <van-field
         v-model="mqttUri"
-        label="MQTT地址"
+        label="MQTT 地址"
         placeholder="192.168.1.1:1883"
         clearable
         @update:model-value="touched = true"
       />
       <van-field
         v-model="mqttUser"
-        label="MQTT登录用户名"
+        label="MQTT 登录用户名"
         placeholder="用户名"
         clearable
         @update:model-value="touched = true"
@@ -238,7 +238,7 @@ function back() {
       <van-field
         v-model="mqttPassword"
         type="password"
-        label="MQTT登录密码"
+        label="MQTT 登录密码"
         :placeholder="mqttPasswordSet ? '已设置(留空表示不修改)' : '未设置'"
         clearable
         @update:model-value="touched = true"
@@ -252,7 +252,7 @@ function back() {
       />
     </van-cell-group>
     <p class="px-5 pt-1 text-xs text-gray-400">
-      MQTT服务器地址,格式必须为 地址:端口<br />如192.168.1.1:1883
+      MQTT 服务器地址,格式必须为 地址:端口<br />如 192.168.1.1:1883
     </p>
     <div class="px-4 pt-3">
       <van-button

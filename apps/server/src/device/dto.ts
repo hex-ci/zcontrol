@@ -1,5 +1,4 @@
-import type { M1State, Zm1Task } from '../device/zm1.ts';
-import { hasAnyTask, parseState } from '../device/zm1.ts';
+import type { M1State } from '../device/zm1.ts';
 
 export interface DeviceDTO {
   mac: string;

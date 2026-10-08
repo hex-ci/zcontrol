@@ -169,7 +169,7 @@ async function onNameConfirm(v: string): Promise<void> {
 
 //region MAC地址(点击复制)
 async function copyMac(): Promise<void> {
-  showToast((await copyText(mac.value)) ? '已复制mac地址' : '复制mac地址失败');
+  showToast((await copyText(mac.value)) ? '已复制 mac 地址' : '复制 mac 地址失败');
 }
 //endregion
 
@@ -192,7 +192,7 @@ const intervalShow = ref(false);
 async function onIntervalConfirm(v: string): Promise<void> {
   const n = Number(v);
   if (!Number.isInteger(n) || n < 1 || n > 255) {
-    showToast('输入有误!范围1-255');
+    showToast('输入有误!范围 1-255');
     return;
   }
   await store.sendCmd(mac.value, { interval: n });
@@ -248,7 +248,7 @@ async function onVersionClick(): Promise<void> {
     }
     try {
       await showConfirmDialog({
-        title: `获取到最新版本:${r.tag_name}`,
+        title: `获取到最新版本: ${r.tag_name}`,
         message: `${r.title}\n${r.message}`,
         confirmButtonText: '更新',
         cancelButtonText: '取消',
@@ -397,7 +397,7 @@ watch(
       showToast('校时失败,请重试');
       return;
     }
-    showToast({ message: `校时结果:${formatGmt0(Number(t))}`, duration: 5000 });
+    showToast({ message: `校时结果: ${formatGmt0(Number(t))}`, duration: 5000 });
   },
 );
 //endregion
@@ -423,10 +423,10 @@ function goBack(): void {
         />
 
         <!-- MAC地址(点击复制) -->
-        <van-cell title="MAC地址(点击复制)" :value="mac" @click="copyMac" />
+        <van-cell title="MAC 地址(点击复制)" :value="mac" @click="copyMac" />
 
         <!-- 总是通过UDP发送数据 -->
-        <van-cell title="总是通过UDP发送数据" label="即使连接MQTT服务器,也使用UDP发送数据">
+        <van-cell title="总是通过 UDP 发送数据" label="即使连接 MQTT 服务器,也使用 UDP 发送数据">
           <template #right-icon>
             <van-switch :model-value="alwaysUdp" size="20" @update:model-value="onUdpChange" />
           </template>
@@ -437,7 +437,7 @@ function goBack(): void {
 
         <!-- 设备当前保存的 MQTT 服务器（云同步后由设备回包确认） -->
         <van-cell
-          title="设备MQTT服务器"
+          title="设备 MQTT 服务器"
           :label="mqttSettingUser"
           :value="mqttSettingText"
           data-testid="device-mqtt-setting"
@@ -522,7 +522,7 @@ function goBack(): void {
     <Zm1SettingTextDialog
       v-model:show="intervalShow"
       title="上报频率"
-      message="单位:秒, 范围1-255"
+      message="单位: 秒, 范围 1-255"
       :initial="intervalText"
       input-type="number"
       confirm-text="保存"
@@ -534,7 +534,7 @@ function goBack(): void {
     <Zm1SettingTextDialog
       v-model:show="fwShow"
       title="请输入固件下载地址"
-      message="警告:输入错误的地址可能导致固件损坏!"
+      message="警告: 输入错误的地址可能导致固件损坏!"
       placeholder="https://...../ota.bin"
       confirm-text="确定"
       cancel-text="取消"

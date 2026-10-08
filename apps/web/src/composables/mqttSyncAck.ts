@@ -62,7 +62,7 @@ export function notifyMqttSyncAck(mac: string, payload: unknown): void {
 
   const name = useDeviceStore().byMac(mac)?.name ?? mac;
   showToast({
-    message: `已设置"${name}"mqtt服务器:\n${ack.mqtt_uri}:${ack.mqtt_port}\n${ack.mqtt_user}`,
+    message: `已设置 "${name}" MQTT 服务器:\n${ack.mqtt_uri}:${ack.mqtt_port}\n${ack.mqtt_user}`,
     duration: 5000,
   });
 }

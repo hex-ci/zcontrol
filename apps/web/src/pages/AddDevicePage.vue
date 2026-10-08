@@ -73,7 +73,7 @@ const manualName = ref('');
 async function addManual() {
   const mac = manualMac.value.trim().toLowerCase();
   if (!/^[0-9a-f]{12}$/.test(mac)) {
-    showToast('MAC格式错误,请输入12位十六进制MAC地址');
+    showToast('MAC 格式错误,请输入 12 位十六进制 MAC 地址');
     return;
   }
   const name = manualName.value.trim() || `zM1_${mac.slice(-4).toUpperCase()}`;
@@ -109,7 +109,7 @@ function back() {
           {{ app.scanning ? '停止扫描' : '开始扫描' }}
         </van-button>
         <span v-if="app.scanning" class="flex items-center gap-1 text-xs text-gray-500" data-testid="scan-status">
-          <van-loading size="14" />正在通过udp广播扫描附近设备....
+          <van-loading size="14" />正在通过 UDP 广播扫描附近设备....
         </span>
       </div>
 
@@ -143,8 +143,8 @@ function back() {
     <van-cell-group inset class="mt-3" title="手动输入">
       <van-field
         v-model="manualMac"
-        label="MAC地址"
-        placeholder="12位十六进制,如 aabbccddeeff"
+        label="MAC 地址"
+        placeholder="12 位十六进制,如 aabbccddeeff"
         clearable
         data-testid="manual-mac"
       />

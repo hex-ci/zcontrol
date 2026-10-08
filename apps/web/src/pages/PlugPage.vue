@@ -52,7 +52,7 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const timeText = (t: Zm1Task | null) => (t ? `${pad(t.hour)}:${pad(t.minute)}` : '--:--');
 /** 动作文本：action != 0 ? "亮度:"+action : "关屏" */
 const actionText = (t: Zm1Task | null) =>
-  t ? (t.brightness !== 0 ? `亮度:${t.brightness}` : '关屏') : '--';
+  t ? (t.brightness !== 0 ? `亮度: ${t.brightness}` : '关屏') : '--';
 
 /** 查询 5 组定时任务 */
 async function queryTasks() {
