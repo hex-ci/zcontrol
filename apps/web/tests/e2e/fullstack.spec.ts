@@ -4,18 +4,63 @@ import { spawn, type ChildProcess } from 'node:child_process';
 /**
  * 全栈联调测试：浏览器 → 后端(8090) → 本机 mosquitto → 假 zM1 设备。
  *
- * 前置（不满足时自动跳过，不会误报失败）：
+ * 前置（不满足时自动跳过并说明原因，不会误报失败）：
  *   1) 后端在 8090 运行：  pnpm --filter @zcontrol/server dev
- *   2) 本机 mosquitto 在 1883
+ *   2) 前端在 5173 运行：  pnpm --filter @zcontrol/web dev
+ *   3) 本机 mosquitto 在 1883
  * 假设备由本用例在 beforeAll 里自己拉起、afterAll 里停掉（不长期占用 broker），
  * 并会把自己加进后端的测试设备在结束时删除。
+ *
+ * beforeAll 的每一步都带标签（`[fullstack] <步骤> ✓/失败`）：hook 里失败时能直接看出卡在哪一步，
+ * 而且「等 MQTT 连上」「等首帧数据」这类等待超时会自己报错并带上最后一次观测值，
+ * 不会再把问题丢给后面的用例变成难查的超时。
  *
  * 安全：只对假设备 mac（aabbccddeeff）下发指令，不触碰任何真实设备。
  */
 
 const API = 'http://127.0.0.1:8090/api';
+const WEB_URL = process.env.BASE_URL ?? 'http://127.0.0.1:5173';
 const FAKE_MAC = 'aabbccddeeff';
 const FAKE_SCRIPT = 'apps/web/tests/e2e/helpers/fake-zm1.mjs';
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * 给 beforeAll 的每一步打标签。
+ * 不加标签时，hook 里任何一步失败都只报一行原始错误（例如 `fetch failed`），
+ * 看不出是「写设置」「等 MQTT」还是「等首帧数据」——排查时只能靠猜。
+ */
+async function step<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const t0 = Date.now();
+  try {
+    const out = await fn();
+    console.log(`[fullstack] ${label} ✓ ${Date.now() - t0}ms`);
+    return out;
+  } catch (e) {
+    throw new Error(`[fullstack] ${label} 失败（${Date.now() - t0}ms）: ${(e as Error).message}`);
+  }
+}
+
+/** 轮询等待，超时抛出带「最后一次观测值」的错误（而不是让后面的用例去超时） */
+async function waitFor(
+  label: string,
+  timeoutMs: number,
+  everyMs: number,
+  probe: () => Promise<{ ok: boolean; detail?: string }>,
+): Promise<void> {
+  const t0 = Date.now();
+  let detail = '';
+  while (Date.now() - t0 < timeoutMs) {
+    const r = await probe();
+    if (r.ok) {
+      console.log(`[fullstack] ${label} ✓ ${Date.now() - t0}ms`);
+      return;
+    }
+    detail = r.detail ?? '';
+    await sleep(everyMs);
+  }
+  throw new Error(`[fullstack] ${label} 超时（${timeoutMs}ms）${detail ? `；最后一次观测: ${detail}` : ''}`);
+}
 
 let fake: ChildProcess | null = null;
 const stopFake = () => {
@@ -49,39 +94,74 @@ test.describe('全栈联调（真后端 + 本机 broker + 假设备）', () => {
   test.describe.configure({ mode: 'serial', timeout: 120_000 });
 
   test.beforeAll(async () => {
-    const health = await api('/health').catch(() => null);
-    test.skip(!health || health.status !== 200, '后端未运行，跳过全栈测试');
-    await api('/settings', { method: 'PUT', body: JSON.stringify({ mqtt_uri: '127.0.0.1:1883' }) });
-    // 等 MQTT 连上
-    for (let i = 0; i < 20; i++) {
+    const health = await step('探测后端', async () => await api('/health').catch(() => null));
+    test.skip(
+      !health || health.status !== 200,
+      '后端未运行，跳过全栈测试（先 pnpm --filter @zcontrol/server dev）',
+    );
+
+    // 前端没起的时候，第一条用例会以 page.goto ERR_CONNECTION_REFUSED 失败、其余全部 did not run，
+    // 看起来像 hook 超时那种神秘 flake；这里显式探测并跳过，把原因说清楚。
+    const webOk = await step('探测前端', async () => {
+      try {
+        const res = await fetch(WEB_URL);
+        return res.status < 500;
+      } catch {
+        return false;
+      }
+    });
+    test.skip(!webOk, `前端未运行，跳过全栈测试（先 pnpm --filter @zcontrol/web dev，期望 ${WEB_URL}）`);
+
+    await step('写 MQTT 设置', async () => {
+      const res = await api('/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ mqtt_uri: '127.0.0.1:1883' }),
+      });
+      if (res.status !== 200) {
+        throw new Error(`PUT /settings 返回 ${res.status}: ${JSON.stringify(res.data)}`);
+      }
+      return res;
+    });
+
+    await waitFor('等 MQTT 连上', 15_000, 500, async () => {
       const st = await api('/status');
-      if ((st.data as { mqtt?: { connected?: boolean } })?.mqtt?.connected) break;
-      await new Promise((r) => setTimeout(r, 500));
-    }
+      const mqtt = (st.data as { mqtt?: { connected?: boolean } })?.mqtt;
+      return { ok: Boolean(mqtt?.connected), detail: JSON.stringify(mqtt ?? null) };
+    });
 
     // 自己拉起假设备（进程退出时会被收掉）
-    fake = spawn(
-      process.execPath,
-      [FAKE_SCRIPT, '--mac', FAKE_MAC, '--name', 'zM1测试', '--broker', '127.0.0.1:1883'],
-      { stdio: 'ignore' },
-    );
-    await new Promise((r) => setTimeout(r, 1500));
-
-    await api('/devices', { method: 'POST', body: JSON.stringify({ mac: FAKE_MAC, name: 'zM1测试' }) });
-    // 把假设备排到第一位，确保主界面默认展示的是假设备（不打扰其它设备）
-    const devices = (await api('/devices')).data as { devices: { mac: string }[] };
-    await api('/devices/order', {
-      method: 'PUT',
-      body: JSON.stringify({ macs: [FAKE_MAC, ...devices.devices.map((d) => d.mac)] }),
+    await step('起假设备', async () => {
+      fake = spawn(
+        process.execPath,
+        [FAKE_SCRIPT, '--mac', FAKE_MAC, '--name', 'zM1测试', '--broker', '127.0.0.1:1883'],
+        { stdio: process.env.ZCONTROL_FAKE_DEBUG ? 'inherit' : 'ignore' },
+      );
+      await sleep(1500);
     });
-    // 主动查一次，让假设备立刻回一帧完整数据（不用等它的上报周期）
-    await api(`/devices/${FAKE_MAC}/cmd`, { method: 'POST', body: JSON.stringify({ cmd: { brightness: null } }) });
+
+    await step('加设备并排到首位', async () => {
+      await api('/devices', { method: 'POST', body: JSON.stringify({ mac: FAKE_MAC, name: 'zM1测试' }) });
+      // 把假设备排到第一位，确保主界面默认展示的是假设备（不打扰其它设备）
+      const devices = (await api('/devices')).data as { devices: { mac: string }[] };
+      await api('/devices/order', {
+        method: 'PUT',
+        body: JSON.stringify({ macs: [FAKE_MAC, ...devices.devices.map((d) => d.mac)] }),
+      });
+    });
+
+    await step('查询首帧', async () => {
+      // 主动查一次，让假设备立刻回一帧完整数据（不用等它的上报周期）
+      await api(`/devices/${FAKE_MAC}/cmd`, {
+        method: 'POST',
+        body: JSON.stringify({ cmd: { brightness: null } }),
+      });
+    });
+
     // 等数据真正到手再开跑：固定 sleep 在冷启动（刚重启后端）时不够，会让第一个用例空等到超时
-    for (let i = 0; i < 40; i++) {
+    await waitFor('等假设备首帧数据', 30_000, 500, async () => {
       const st = (await api(`/devices/${FAKE_MAC}/state`)).data as { state?: { PM25?: number } };
-      if (typeof st?.state?.PM25 === 'number') break;
-      await new Promise((r) => setTimeout(r, 500));
-    }
+      return { ok: typeof st?.state?.PM25 === 'number', detail: JSON.stringify(st?.state ?? null) };
+    });
   });
 
   test.afterAll(async () => {

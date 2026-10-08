@@ -19,30 +19,41 @@ export class UdpService {
   dryRun = false;
   sent: { payload: string; ip: string; port: number }[] = [];
   private readonly onMessage: (ip: string, port: number, payload: string) => void;
+  private readonly onError?: (message: string) => void;
+  private readonly port: number;
 
   constructor(
     onMessage: (ip: string, port: number, payload: string) => void,
     dryRun = false,
+    onError?: (message: string) => void,
+    port: number = PHONE_UDP_PORT,
   ) {
     this.onMessage = onMessage;
     this.dryRun = dryRun;
+    this.onError = onError;
+    this.port = port;
   }
 
   status(): UdpStatus {
-    return { listening: this.listening, port: PHONE_UDP_PORT };
+    return { listening: this.listening, port: this.port };
   }
 
   start(): void {
     if (this.socket) return;
-    const socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    // 刻意不开 reuseAddr：两个后端进程同时监听 10181 时，设备回包会被内核随机
+    // 投递给其中一个，表现为"云同步偶尔收不到回包"。宁可第二个进程启动就报错。
+    const socket = dgram.createSocket({ type: 'udp4' });
     this.socket = socket;
 
     socket.on('message', (msg, rinfo) => {
       this.onMessage(rinfo.address, rinfo.port, msg.toString());
     });
 
-    socket.on('error', () => {
+    socket.on('error', (err) => {
       this.listening = false;
+      this.onError?.(
+        `UDP 监听 ${this.port} 失败：${err.message}（同一台机器上是否已有另一个后端进程在跑？）`,
+      );
       bus.emit(EV.UDP_STATUS, this.status());
     });
 
@@ -57,7 +68,7 @@ export class UdpService {
     });
 
     try {
-      socket.bind(PHONE_UDP_PORT);
+      socket.bind(this.port);
     } catch {
       this.listening = false;
     }

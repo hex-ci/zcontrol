@@ -5,7 +5,8 @@ import { expect, test, type Page, type WebSocketRoute } from '@playwright/test';
  *   1) 点该入口下发本机 MQTT 配置；
  *   2) 设备回包 setting → 弹 Toast 确认设备实际保存的配置（原版 DeviceFragment 的行为）；
  *   3) 设备列表为空时点该入口 → 弹框提示而不是静默返回；
- *   4) 设备设置页显示设备当前保存的 MQTT 服务器。
+ *   4) 设备设置页显示设备当前保存的 MQTT 服务器；
+ *   5) 3 秒没等到回包 → 提示可「重发」（最多 3 次），收到回包则正常确认。
  *
  * 安全：所有 /api/** 用 page.route 拦截、WebSocket 用 routeWebSocket mock，
  * 不连真实后端/broker，也不向任何真实设备下发报文。
@@ -189,4 +190,66 @@ test('设备设置页：还没收到回包时给出获取提示', async ({ page 
   const cell = page.getByTestId('device-mqtt-setting');
   await expect(cell).toBeVisible();
   await expect(cell).toContainText('未获取到设备保存的配置');
+});
+
+test('云同步：3 秒没等到回包 → 提示「重发」；重发后收到回包则确认', async ({ page }) => {
+  const h = await mockBackend(page, { brightness: 3 });
+  await openApp(page);
+  await expect.poll(() => h.ws() !== null).toBe(true);
+
+  await page.getByTestId('nav-sync').click();
+  await expect.poll(() => h.syncPosts.length).toBe(1);
+  await expect(page.locator('.van-toast')).toContainText('已发送MQTT配置到"悟空M1"');
+
+  // 设备不回包 → 3 秒后提示可以重发（不能像以前那样静默）
+  await expect(page.getByText('未收到设备回包')).toBeVisible({ timeout: 8000 });
+  await expect(page.getByText(/3 秒内没等到设备回包/)).toBeVisible();
+
+  await page.getByRole('button', { name: '重发' }).click();
+  await expect.poll(() => h.syncPosts.length).toBe(2);
+  await expect(page.locator('.van-toast')).toContainText('已重发(2)到"悟空M1"');
+
+  // 这次设备回包了 → 弹它实际保存的配置，并且不再重发
+  h.ws()?.send(
+    JSON.stringify({
+      type: 'data',
+      data: {
+        mac: MAC,
+        source: 'udp',
+        topic: null,
+        payload: {
+          name: '悟空M1',
+          mac: MAC,
+          setting: {
+            mqtt_uri: '192.168.1.10',
+            mqtt_port: 1883,
+            mqtt_user: 'z',
+            mqtt_password: '',
+          },
+        },
+        ts: Date.now(),
+      },
+    }),
+  );
+  await expect(page.locator('.van-toast')).toContainText('已设置"悟空M1"mqtt服务器');
+  await page.waitForTimeout(3500);
+  expect(h.syncPosts).toHaveLength(2);
+});
+
+test('云同步：连续 3 次都没等到回包 → 给出最终提示，不再重发', async ({ page }) => {
+  const h = await mockBackend(page, {});
+  await openApp(page);
+
+  await page.getByTestId('nav-sync').click();
+
+  await expect(page.getByText('未收到设备回包')).toBeVisible({ timeout: 8000 });
+  await page.getByRole('button', { name: '重发' }).click();
+  await expect(page.getByText('未收到设备回包')).toBeVisible({ timeout: 8000 });
+  await page.getByRole('button', { name: '重发' }).click();
+
+  await expect(page.getByText(/下发 3 次 MQTT 配置/)).toBeVisible({ timeout: 8000 });
+  expect(h.syncPosts).toHaveLength(3);
+
+  await page.waitForTimeout(3500);
+  expect(h.syncPosts).toHaveLength(3);
 });

@@ -45,6 +45,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<BuiltAp
   const udp = new UdpService(
     (ip, port, payload) => dispatcher.handleUdp(ip, port, payload),
     options.udpDryRun ?? false,
+    (message) => app.log.error(message),
   );
   const mqtt = new MqttService((topic, payload) => dispatcher.handleMqtt(topic, payload));
   const discovery = new DiscoveryService(udp);

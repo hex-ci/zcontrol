@@ -168,7 +168,10 @@ if (useUdp) {
 
 // ---- MQTT 模式 ----
 if (!useUdp) {
-  const client = mqtt.connect(`mqtt://${broker}`, { clientId: `fake-zm1-${mac}`, clean: true });
+  // clientId 带随机后缀：固定 clientId 时，上一轮残留的假设备（同 mac）会和新的互相踢下线，
+  // 症状是 set 报文丢失、首帧只能等周期上报（实测能拖到 27 秒，看起来像随机 flake）。
+  const clientId = `fake-zm1-${mac}-${Math.random().toString(16).slice(2, 8)}`;
+  const client = mqtt.connect(`mqtt://${broker}`, { clientId, clean: true });
   const topicSet = `device/zm1/${mac}/set`;
   const topicState = `device/zm1/${mac}/state`;
   const topicSensor = `device/zm1/${mac}/sensor`;

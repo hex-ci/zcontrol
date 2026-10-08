@@ -17,6 +17,7 @@ import DeviceM1Page from './DeviceM1Page.vue';
 import { useAppStore } from '../stores/app';
 import { useDeviceStore } from '../stores/devices';
 import { useLogStore } from '../stores/log';
+import { onMqttSyncAck } from '../composables/mqttSyncAck';
 
 const app = useAppStore();
 const device = useDeviceStore();
@@ -52,7 +53,33 @@ function openDoc() {
   window.open(docUri, '_blank');
 }
 
-/** 云同步：把本机 MQTT 配置下发给设备 */
+/** 云同步：把本机 MQTT 配置下发给设备（UDP 广播）+ 等设备回包确认 */
+const ACK_TIMEOUT_MS = 3000;
+const MAX_SYNC_TRIES = 3;
+
+/**
+ * 等设备回报 MQTT 配置（回包确认）。
+ * 广播/设备都可能漏包，所以发送后等一小会儿；超时返回 false，由调用方提示重发。
+ */
+function waitForMqttAck(mac: string, timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const off = onMqttSyncAck((ack) => {
+      if (settled || ack.mac !== mac) return;
+      settled = true;
+      off();
+      window.clearTimeout(timer);
+      resolve(true);
+    });
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      off();
+      resolve(false);
+    }, timeoutMs);
+  });
+}
+
 async function cloudSync() {
   const d = current.value;
   if (!d) {
@@ -73,9 +100,44 @@ async function cloudSync() {
       cancelButtonText: '取消',
     });
   }
+
   try {
-    await app.syncMqtt(d.mac);
-    showToast('已发送MQTT配置');
+    for (let attempt = 1; attempt <= MAX_SYNC_TRIES; attempt++) {
+      await app.syncMqtt(d.mac);
+      showToast(
+        attempt === 1
+          ? `已发送MQTT配置到"${d.name}"`
+          : `已重发(${attempt})到"${d.name}"`,
+      );
+
+      // 收到回包时 mqttSyncAck 会弹「已设置...mqtt服务器」，这里就不用再提示了
+      if (await waitForMqttAck(d.mac, ACK_TIMEOUT_MS)) return;
+
+      if (attempt === MAX_SYNC_TRIES) {
+        await showDialog({
+          title: '未收到设备回包',
+          message:
+            `已向"${d.name}"下发 ${attempt} 次 MQTT 配置，但都没等到设备回包。\n` +
+            '可能原因：广播丢包、设备正忙、或设备与本机不在同一网段。\n' +
+            '可稍后在「设备设置 → 设备MQTT服务器」查看设备上的实际配置。',
+          confirmButtonText: '知道了',
+        });
+        return;
+      }
+
+      try {
+        await showConfirmDialog({
+          title: '未收到设备回包',
+          message:
+            `已向"${d.name}"下发 MQTT 配置，但 ${ACK_TIMEOUT_MS / 1000} 秒内没等到设备回包。\n` +
+            '多半是广播丢包或设备没吃到这一包，点「重发」再试一次。',
+          confirmButtonText: '重发',
+          cancelButtonText: '取消',
+        });
+      } catch {
+        return; // 用户取消重发
+      }
+    }
   } catch (e) {
     showToast(String((e as Error).message));
   }
