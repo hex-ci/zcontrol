@@ -13,6 +13,10 @@
  * 图标名必须在 Vant 4 的图标表里存在：曾用 `cloud-o`（Vant 没有这个图标），
  * 结果按钮变成 16px 宽的空白区域、用户完全看不到入口（靠 e2e 的图标字形守卫兜住）。
  * 三个动作都只放图标、不加文字，保持顶栏一致；含义靠 title / aria-label。
+ *
+ * `:clickable="false"`：Vant 默认会给左/右区容器加 `van-haptics-feedback`
+ * （cursor:pointer + 按下变暗）。右区容器我们并没有监听 click-right，于是整块空白也像按钮、
+ * 点了却没任何反应——关掉它，改成只让真正的控件（三个按钮、左侧菜单图标）自己有光标与按压反馈。
  */
 defineProps<{
   title: string;
@@ -36,20 +40,23 @@ const emit = defineEmits<{
   <van-nav-bar
     :title="title"
     :left-arrow="!!back"
+    :clickable="false"
     fixed
     placeholder
     :border="false"
     @click-left="menu ? emit('menu') : emit('back')"
   >
     <template v-if="menu" #left>
-      <van-icon name="bars" size="20" />
+      <span class="flex cursor-pointer items-center active:opacity-60">
+        <van-icon name="bars" size="20" />
+      </span>
     </template>
     <template #right>
       <div class="flex items-center">
         <button
           v-if="doc"
           type="button"
-          class="flex items-center px-2 py-2"
+          class="flex cursor-pointer items-center px-2 py-2 active:opacity-60"
           data-testid="nav-doc"
           @click="emit('doc')"
         >
@@ -59,7 +66,7 @@ const emit = defineEmits<{
         <button
           v-if="sync"
           type="button"
-          class="flex items-center px-2 py-2"
+          class="flex cursor-pointer items-center px-2 py-2 active:opacity-60"
           data-testid="nav-sync"
           title="云同步：把本机 MQTT 服务器配置下发给设备"
           aria-label="云同步：把本机 MQTT 服务器配置下发给设备"
@@ -70,7 +77,7 @@ const emit = defineEmits<{
         <button
           v-if="edit"
           type="button"
-          class="flex items-center px-2 py-2"
+          class="flex cursor-pointer items-center px-2 py-2 active:opacity-60"
           data-testid="nav-edit"
           @click="emit('edit')"
         >
